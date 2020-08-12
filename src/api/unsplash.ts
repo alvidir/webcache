@@ -1,17 +1,31 @@
 import * as Interface from './interfaces';
 import { Result } from './result';
 import Unsplash from 'unsplash-js';
+import { toJson } from 'unsplash-js';
 import { ParsedUrlQuery } from 'querystring';
 
-import url from 'url';
-const apiKey: string = process.env.API_KEY || "None";
-const unsplash = new Unsplash({ accessKey: apiKey });
+// required to get environment configuration
+import environment from '../config';
+
+const apiKey: string = environment.ApiKey;
+const unsplash = new Unsplash({ accessKey: apiKey, timeout: 500 });
 
 class UnsplashApi implements Interface.UnsplashApi {
 
     HandleSingleRequest(): Interface.Result {
         let result = new Result();
-        result.setResult('single');
+        unsplash.photos.getRandomPhoto({
+            username: "naoufal",
+            query: undefined,
+            featured: undefined,
+            collections: undefined,
+            count: 1
+        })
+            .then(toJson)
+            .then(json => {
+                console.log(json);
+            });
+
         return result.build();
     }
 

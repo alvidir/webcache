@@ -5,9 +5,8 @@ import url from 'url';
 import * as UnsplashApi from './api/unsplash';
 import * as Interfaces from './api/interfaces';
 
-// Configure environment variables
-import * as dotenv from 'dotenv';
-dotenv.config();
+// fetch is required by the unsplash api
+global.fetch = require('node-fetch');
 
 import { ParsedUrlQuery } from 'querystring';
 const port = process.env.SERVICE_PORT || 3001;

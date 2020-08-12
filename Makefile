@@ -14,7 +14,7 @@ run:
 	docker run -p 3001:3001 \
 	--name=${PROJECT} \
 	--restart always \
-	--detach ${REPO}/${PROJECT}:${VERSION}
+	-it ${REPO}/${PROJECT}:${VERSION}
 
 stop:
 	docker stop ${PROJECT}
