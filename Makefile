@@ -3,7 +3,8 @@ export PROJECT=unsplash-api
 export REPO=alvidir
 
 build:
-	docker build -t ${REPO}/${PROJECT}:${VERSION} -f ./dockerfile .
+	docker build --rm \
+	-t ${REPO}/${PROJECT}:${VERSION} -f ./dockerfile .
 
 run:
 	docker run -p 3001:3001 \
@@ -14,3 +15,6 @@ run:
 stop:
 	docker stop ${PROJECT}
 	docker rm ${PROJECT}
+
+logs:
+	docker logs -f ${PROJECT}
