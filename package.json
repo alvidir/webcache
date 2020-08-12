@@ -8,19 +8,25 @@
     "main": "app.ts",
     "scripts": {
         "start": "node src/app.ts",
-        "tsc": "tsc -p . --outDir ./build"
+        "tsc": "tsc -p . --outDir ./build",
+        "proto-js": "grpc_tools_node_protoc --js_out=import_style=commonjs,binary:src/proto/ --grpc_out=src/proto/ --plugin=protoc-gen-grpc=./node_modules/.bin/grpc_tools_node_protoc_plugin -I ./proto proto/*.proto",
+        "proto-ts": "grpc_tools_node_protoc --plugin=protoc-gen-ts=./node_modules/.bin/protoc-gen-ts --plugin=protoc-gen-grpc=./node_modules/.bin/grpc_tools_node_protoc_plugin --ts_out=service=grpc-node:src/proto/ -I ./proto proto/*.proto"
     },
     "dependencies": {
         "@types/dotenv": "^8.2.0",
+        "@types/google-protobuf": "^3.7.2",
         "@types/node": "^14.0.27",
         "@types/node-fetch": "^2.5.7",
         "@types/unsplash-js": "^6.0.1",
         "dotenv": "^8.2.0",
+        "google-protobuf": "^3.12.4",
         "grpc": "^1.24.3",
         "grpc-tools": "^1.9.1",
+        "grpc-web-client": "^0.7.0",
         "grpc_tools_node_protoc_ts": "^4.1.3",
         "http": "0.0.1-security",
         "node-fetch": "^2.6.0",
+        "protoc": "^1.0.4",
         "protoc-gen-grpc": "^1.4.1",
         "ts-node": "^8.10.2",
         "ts-protoc-gen": "^0.12.0",

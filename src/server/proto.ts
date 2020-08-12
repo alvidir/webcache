@@ -1,15 +1,15 @@
 import { Server, ServerUnaryCall, sendUnaryData, ServerCredentials } from 'grpc';
-import { IApiServer, ApiService } from '../model/api_grpc_pb';
-import { Result } from '../model/result_pb';
-import { SingleRequest } from '../model/single_pb';
-import { RollRequest } from '../model/roll_pb';
-import { SupplyRequest } from '../model/supply_pb';
+import { ApiService, IApiService } from '../proto/proto-ts/api_grpc_pb';
+import { Result } from '../proto/proto-ts/result_pb';
+import { SingleRequest } from '../proto/proto-ts/single_pb';
+import { RollRequest } from '../proto/proto-ts/roll_pb';
+import { SupplyRequest } from '../proto/proto-ts/supply_pb';
 
 function singleImplementation(req: SingleRequest): Result {
     return new Result();
 }
 
-class ApiImplementation implements IApiServer {
+class ApiImplementation implements IApiService {
     public single(call: ServerUnaryCall<SingleRequest>, callback: sendUnaryData<Result>): void {
         console.log("Single call from grpc");
     }

@@ -11,7 +11,7 @@ COPY package*.json /srv/
 RUN npm ci
 
 COPY tsconfig.json /srv/
-COPY src /srv/src/
+COPY src/* /srv/src/
 RUN npm run tsc
 
 RUN npm ci --production

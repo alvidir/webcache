@@ -7,7 +7,8 @@ GRPC_TOOLS_NODE_PROTOC_PLUGIN="./node_modules/.bin/grpc_tools_node_protoc_plugin
 GRPC_TOOLS_NODE_PROTOC="./node_modules/.bin/grpc_tools_node_protoc"
 
 PROTO_DIR="./proto"
-OUT_DIR="./src/model"
+OUT_JS_DIR="./src/proto/proto-js"
+OUT_TS_DIR="./src/proto/proto-ts"
 
 build:
 	docker build --rm \
@@ -30,16 +31,16 @@ protoc:
 	protoc \
 		--plugin="protoc-gen-ts=${PROTOC_GEN_TS_PATH}" \
 		--plugin=protoc-gen-grpc=${GRPC_TOOLS_NODE_PROTOC_PLUGIN} \
-		--js_out="import_style=commonjs,binary:${OUT_DIR}" \
-		--ts_out="service=grpc-web:${OUT_DIR}" \
-		--grpc_out=${OUT_DIR} \
+		--js_out="import_style=commonjs,binary:${OUT_JS_DIR}" \
+		--ts_out="service=grpc-node:${OUT_TS_DIR}" \
+		--grpc_out=${OUT_JS_DIR} \
 		--proto_path ${PROTO_DIR} ${PROTO_DIR}/*.proto
 
 	#${GRPC_TOOLS_NODE_PROTOC} \
   	#	--plugin="protoc-gen-ts=${PROTOC_GEN_TS_PATH}" \
-  	#	--grpc_out="${OUT_DIR}" \
-  	#	--js_out="import_style=commonjs,binary:${OUT_DIR}" \
-  	#	--ts_out="${OUT_DIR}" \
+  	#	--grpc_out="${OUT_JS_DIR}" \
+  	#	--js_out="import_style=commonjs,binary:${OUT_JS_DIR}" \
+  	#	--ts_out="service=grpc-node:${OUT_JS_DIR}" \
   	#	--proto_path ${PROTO_DIR} ${PROTO_DIR}/*.proto
 
 clear-proto:
