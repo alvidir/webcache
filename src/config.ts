@@ -3,6 +3,8 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 export default {
-    ServicePort: process.env.SERVICE_PORT ?? '3001',
+    AppHost: process.env.APP_HOST ?? 'localhost',
+    RestServicePort: process.env.REST_SERVICE_PORT ?? '3001',
+    ProtoServicePort: process.env.PROTO_SERVICE_PORT ?? '3002',
     ApiKey: process.env.API_KEY ?? 'None'
 }

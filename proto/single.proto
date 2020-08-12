@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package proto;
+package model;
 
 // Single call description
 message SingleRequest {

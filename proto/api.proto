@@ -1,10 +1,10 @@
 syntax = "proto3";
 
-package proto;
-import public "src/proto/result.proto";
-import public "src/proto/roll.proto";
-import public "src/proto/single.proto";
-import public "src/proto/supply.proto";
+package model;
+import public "result.proto";
+import public "roll.proto";
+import public "single.proto";
+import public "supply.proto";
 
 service Api {
     rpc Single(SingleRequest) returns (Result);
