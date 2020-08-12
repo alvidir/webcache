@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package proto;
+
+// Supply call description
+message SupplyRequest {
+  int32 code = 1;
+}

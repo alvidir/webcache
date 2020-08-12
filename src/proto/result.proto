@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package proto;
+
+// Result description
+message Result {
+  int32 code = 1;
+}

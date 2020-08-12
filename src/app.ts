@@ -2,8 +2,8 @@ import http from 'http';
 import url from 'url';
 
 
-import * as UnsplashApi from './apis/unsplash';
-import * as Interfaces from './apis/interfaces';
+import * as UnsplashApi from './api/unsplash';
+import * as Interfaces from './api/interfaces';
 
 // Configure environment variables
 import * as dotenv from 'dotenv';

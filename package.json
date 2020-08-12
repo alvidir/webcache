@@ -15,7 +15,9 @@
         "@types/unsplash-js": "^6.0.1",
         "dotenv": "^8.2.0",
         "http": "0.0.1-security",
+        "protoc-gen-grpc": "^1.4.1",
         "ts-node": "^8.10.2",
+        "ts-protoc-gen": "^0.12.0",
         "typescript": "^3.9.7",
         "unsplash-js": "^6.0.0",
         "url": "^0.11.0"

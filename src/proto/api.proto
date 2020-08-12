@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package proto;
+import public "src/proto/result.proto";
+import public "src/proto/roll.proto";
+import public "src/proto/single.proto";
+import public "src/proto/supply.proto";
+
+service Api {
+    rpc Single(SingleRequest) returns (Result);
+    rpc Roll(RollRequest) returns (Result);
+    rpc Supply(SupplyRequest) returns (Result);
+}
