@@ -6,26 +6,29 @@ var api = require('./apis/unsplash');
 const port = process.env.SERVICE_PORT || 3001;
 
 let HandleRequest = (req, res) => {
-    let result = JSON.stringify('None');
+    let result = 'None';
+
     let path = url.parse(req.url, true).pathname;
     let qu = url.parse(req.url, true).query;
 
     switch (path) {
         case '/roll':
-            result = api.HandleRollRequest(qu);
+            result = api.HandleRollRequest(path);
             break;
 
         case '/supply':
-            result = api.HandleSupplyRequest(qu);
+            result = api.HandleSupplyRequest(path);
             break;
 
+        case '/single':
         default:
-            result = api.HandleDefaultRequest(qu);
+            result = api.HandleSingleRequest();
     }
 
     res.setHeader('Content-Type', 'application/json');
-    res.write(result); //write a response to the client
     res.statusCode = 200;
+    res.write('{"result": ' + result + '}');
+
     res.end(); //end the response
 }
 
