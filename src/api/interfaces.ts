@@ -1,13 +1,16 @@
+import http from 'http';
 import { ParsedUrlQuery } from 'querystring';
 
-export interface Result {
-    Get(): string;
-    Err(): string;
-    Ok(): boolean;
+export type Callback = (imgs: ImageInfo[]) => void;
+
+export interface ImageInfo {
+    update(author: string, urls: string): void;
+    Author(): string;
+    Urls(): string;
 }
 
 export interface UnsplashApi {
-    HandleSingleRequest(): Result;
-    HandleRollRequest(query: ParsedUrlQuery): Result;
-    HandleSupplyRequest(query: ParsedUrlQuery): Result;
+    HandleSingleRequest(cb: Callback): void;
+    HandleRollRequest(query: ParsedUrlQuery, cb: Callback): void;
+    HandleSupplyRequest(query: ParsedUrlQuery, cb: Callback): void;
 }

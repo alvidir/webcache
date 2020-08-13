@@ -1,6 +1,7 @@
-import * as Interface from './interfaces';
-import { Result } from './result';
+import http from 'http';
 import Unsplash from 'unsplash-js';
+import * as Interface from './interfaces';
+import { ImageInfo } from './image';
 import { toJson } from 'unsplash-js';
 import { ParsedUrlQuery } from 'querystring';
 
@@ -8,47 +9,51 @@ import { ParsedUrlQuery } from 'querystring';
 import environment from '../config';
 
 const apiKey: string = environment.ApiKey;
-const unsplash = new Unsplash({ accessKey: apiKey, timeout: 500 });
+const unsplash = new Unsplash({ accessKey: apiKey, timeout: 1000 });
 
 class UnsplashApi implements Interface.UnsplashApi {
 
-    HandleSingleRequest(): Interface.Result {
-        let result = new Result();
+    private ParseSourceJSON(json: any): Interface.ImageInfo[] {
+        let stack: Interface.ImageInfo[] = new Array();
+        for (let index = 0; index < json.length || 0; index++) {
+            const data = json[index];
+            const author = data['user']['username'];
+            const source = data['user']['links']['html'];
+            const urls = data['urls'];
+
+            let image = new ImageInfo(author, urls, source);
+            image.profile_image = data['user']['profile_image']['medium'];
+            image.bio = data['user']['bio'];
+            image.likes = data['likes'];
+
+            stack.push(image);
+        }
+
+        return stack;
+    }
+
+    private HandleError(err: Error) {
+        console.log(err);
+    }
+
+    async HandleSingleRequest(callback: Interface.Callback) {
         unsplash.photos.getRandomPhoto({
-            username: "naoufal",
+            username: undefined,
             query: undefined,
             featured: undefined,
             collections: undefined,
             count: 1
         })
             .then(toJson)
-            .then(json => {
-                console.log(json);
-            });
-
-        return result.build();
+            .then(this.ParseSourceJSON)
+            .then(callback)
+            .catch(this.HandleError);
     }
 
-    HandleRollRequest(query: ParsedUrlQuery): Interface.Result {
-        let result = new Result();
-        result.setResult("None");
-
-        if (!query['hola']) {
-            result.missing('hola');
-        }
-
-        return result.build();
+    async HandleRollRequest(query: ParsedUrlQuery, callback: Interface.Callback) {
     }
 
-    HandleSupplyRequest(query: ParsedUrlQuery): Interface.Result {
-        let result = new Result();
-        result.setResult("None");
-
-        if (query.name?.length == 0) {
-            result.setError('No parameters set for supply call');
-        }
-
-        return result.build();
+    async HandleSupplyRequest(query: ParsedUrlQuery, callback: Interface.Callback) {
     }
 }
 

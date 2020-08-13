@@ -8,10 +8,18 @@ import { ParsedUrlQuery } from 'querystring';
 // fetch is required by the unsplash api
 global.fetch = require('node-fetch');
 
-let HandleRequest = (req: http.IncomingMessage, res: http.ServerResponse) => {
-    let result: Interfaces.Result;
+function CallbackAdapter(res: http.ServerResponse): Interfaces.Callback {
+    return function (imgs: Interfaces.ImageInfo[]): void {
+        res.statusCode = imgs.length > 0 ? 200 : 400;
+        res.write(JSON.stringify(imgs));
+        res.end();
+    }
+}
 
+let HandleRequest = (req: http.IncomingMessage, res: http.ServerResponse) => {
+    res.setHeader('Content-Type', 'application/json');
     let source: string = req.url ? req.url : 'None';
+
     if (!source) {
         res.statusCode = 400;
         res.end();
@@ -20,26 +28,21 @@ let HandleRequest = (req: http.IncomingMessage, res: http.ServerResponse) => {
 
     let path = url.parse(source, true).pathname;
     let query: ParsedUrlQuery = url.parse(source, true).query;
+    const callback = CallbackAdapter(res);
 
     switch (path) {
         case '/roll':
-            result = UnsplashApi.GetInstance().HandleRollRequest(query);
+            UnsplashApi.GetInstance().HandleRollRequest(query, callback);
             break;
 
         case '/supply':
-            result = UnsplashApi.GetInstance().HandleSupplyRequest(query);
+            UnsplashApi.GetInstance().HandleSupplyRequest(query, callback);
             break;
 
         case '/single':
         default:
-            result = UnsplashApi.GetInstance().HandleSingleRequest();
+            UnsplashApi.GetInstance().HandleSingleRequest(callback);
     }
-
-    res.setHeader('Content-Type', 'application/json');
-    res.statusCode = result.Ok() ? 200 : 400;
-    res.write('{"result": ' + JSON.stringify(result) + '}');
-
-    res.end(); //end the response
 }
 
 //create a server object
