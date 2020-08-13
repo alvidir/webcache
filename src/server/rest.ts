@@ -1,7 +1,6 @@
 import http from 'http';
 import url from 'url';
 
-
 import * as UnsplashApi from '../api/unsplash';
 import * as Interfaces from '../api/interfaces';
 import { ParsedUrlQuery } from 'querystring';

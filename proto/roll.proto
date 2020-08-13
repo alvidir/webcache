@@ -1,8 +1,0 @@
-syntax = "proto3";
-
-package model;
-
-// Roll call description
-message RollRequest {
-  int32 code = 1;
-}

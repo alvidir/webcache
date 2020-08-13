@@ -1,8 +1,0 @@
-syntax = "proto3";
-
-package model;
-
-// Result description
-message Result {
-  int32 code = 1;
-}

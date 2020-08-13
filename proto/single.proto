@@ -1,8 +1,0 @@
-syntax = "proto3";
-
-package model;
-
-// Single call description
-message SingleRequest {
-  int32 code = 1;
-}

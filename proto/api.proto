@@ -1,11 +1,27 @@
 syntax = "proto3";
-
 package model;
-import public "result.proto";
-import public "roll.proto";
-import public "single.proto";
-import public "supply.proto";
 
+// Result description
+message Result {
+  int32 code = 1;
+}
+
+// Roll call description
+message RollRequest {
+  int32 code = 1;
+}
+
+// Single call description
+message SingleRequest {
+  int32 code = 1;
+}
+
+// Supply call description
+message SupplyRequest {
+  int32 code = 1;
+}
+
+// API Service
 service Api {
     rpc Single(SingleRequest) returns (Result);
     rpc Roll(RollRequest) returns (Result);

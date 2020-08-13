@@ -1,8 +1,0 @@
-syntax = "proto3";
-
-package model;
-
-// Supply call description
-message SupplyRequest {
-  int32 code = 1;
-}
