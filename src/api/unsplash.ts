@@ -36,13 +36,13 @@ class UnsplashApi implements Interface.UnsplashApi {
         console.log(err);
     }
 
-    async HandleSingleRequest(callback: Interface.Callback) {
+    async HandleRandomRequest(n: number, callback: Interface.Callback) {
         unsplash.photos.getRandomPhoto({
             username: undefined,
             query: undefined,
             featured: undefined,
             collections: undefined,
-            count: 1
+            count: n
         })
             .then(toJson)
             .then(this.ParseSourceJSON)
@@ -50,10 +50,7 @@ class UnsplashApi implements Interface.UnsplashApi {
             .catch(this.HandleError);
     }
 
-    async HandleRollRequest(query: ParsedUrlQuery, callback: Interface.Callback) {
-    }
-
-    async HandleSupplyRequest(query: ParsedUrlQuery, callback: Interface.Callback) {
+    async HandleQueryRequest(query: ParsedUrlQuery, callback: Interface.Callback) {
     }
 }
 

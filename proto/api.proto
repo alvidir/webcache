@@ -25,5 +25,4 @@ message SupplyRequest {
 service Api {
     rpc Single(SingleRequest) returns (Result);
     rpc Roll(RollRequest) returns (Result);
-    rpc Supply(SupplyRequest) returns (Result);
 }

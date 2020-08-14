@@ -10,10 +10,6 @@ class ApiImplementation implements IApiServer {
     public roll(call: ServerUnaryCall<pb.RollRequest>, callback: sendUnaryData<pb.Result>): void {
         console.log("Roll call from grpc");
     }
-
-    public supply(call: ServerUnaryCall<pb.SupplyRequest>, callback: sendUnaryData<pb.Result>): void {
-        console.log("Supply call from grpc");
-    }
 }
 
 //create a server object

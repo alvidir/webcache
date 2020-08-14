@@ -14,7 +14,7 @@ export class ImageInfo implements Interface.ImageInfo {
         this.profile = source;
     }
 
-    update(author: string, urls: string) {
+    Update(author: string, urls: string) {
         this.author = author;
         this.urls = urls;
     }

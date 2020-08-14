@@ -37,17 +37,6 @@ function deserialize_proto_SingleRequest(buffer_arg) {
   return api_pb.SingleRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_proto_SupplyRequest(arg) {
-  if (!(arg instanceof api_pb.SupplyRequest)) {
-    throw new Error('Expected argument of type proto.SupplyRequest');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_proto_SupplyRequest(buffer_arg) {
-  return api_pb.SupplyRequest.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
 
 // API Service
 var ApiService = exports.ApiService = {
@@ -70,17 +59,6 @@ var ApiService = exports.ApiService = {
     responseType: api_pb.Result,
     requestSerialize: serialize_proto_RollRequest,
     requestDeserialize: deserialize_proto_RollRequest,
-    responseSerialize: serialize_proto_Result,
-    responseDeserialize: deserialize_proto_Result,
-  },
-  supply: {
-    path: '/proto.Api/Supply',
-    requestStream: false,
-    responseStream: false,
-    requestType: api_pb.SupplyRequest,
-    responseType: api_pb.Result,
-    requestSerialize: serialize_proto_SupplyRequest,
-    requestDeserialize: deserialize_proto_SupplyRequest,
     responseSerialize: serialize_proto_Result,
     responseDeserialize: deserialize_proto_Result,
   },

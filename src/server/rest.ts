@@ -1,18 +1,22 @@
 import http from 'http';
 import url from 'url';
-
-import * as UnsplashApi from '../api/unsplash';
-import * as Interfaces from '../api/interfaces';
 import { ParsedUrlQuery } from 'querystring';
-
+import { GetInstance as CacheInstance } from '../cache/public'
+import { GetInstance as UnsplashInstance } from '../api/unsplash'
+import { Callback, ImageInfo } from '../api/interfaces'
 // fetch is required by the unsplash api
 global.fetch = require('node-fetch');
 
-function CallbackAdapter(res: http.ServerResponse): Interfaces.Callback {
-    return function (imgs: Interfaces.ImageInfo[]): void {
-        res.statusCode = imgs.length > 0 ? 200 : 400;
-        res.write(JSON.stringify(imgs));
-        res.end();
+function ResponseSender(res: http.ServerResponse, response: any | undefined) {
+    res.statusCode = response ? 200 : 400;
+    res.write(JSON.stringify(response))
+    res.end();
+}
+
+function CallbackAdapter(res: http.ServerResponse): Callback {
+    return function (imgs: ImageInfo[]): void {
+        let response = imgs.length > 0 ? imgs : undefined;
+        ResponseSender(res, response);
     }
 }
 
@@ -28,21 +32,21 @@ let HandleRequest = (req: http.IncomingMessage, res: http.ServerResponse) => {
 
     let path = url.parse(source, true).pathname;
     let query: ParsedUrlQuery = url.parse(source, true).query;
-    const callback = CallbackAdapter(res);
+    let response: any;
 
     switch (path) {
         case '/roll':
-            UnsplashApi.GetInstance().HandleRollRequest(query, callback);
+            // return all items in the cache
+            response = CacheInstance().GetAllItems()
             break;
-
-        case '/supply':
-            UnsplashApi.GetInstance().HandleSupplyRequest(query, callback);
-            break;
-
         case '/single':
         default:
-            UnsplashApi.GetInstance().HandleSingleRequest(callback);
+            // return a single item in the cache
+            response = CacheInstance().GetSingle();
+            break;
     }
+
+    ResponseSender(res, response);
 }
 
 //create a server object
