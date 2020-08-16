@@ -6,86 +6,62 @@
 
 import * as jspb from "google-protobuf";
 
-export class Result extends jspb.Message { 
-    getCode(): number;
-    setCode(value: number): Result;
+export class Image extends jspb.Message { 
+
+    getUrlsMap(): jspb.Map<string, string>;
+    clearUrlsMap(): void;
+
+    getAuthor(): string;
+    setAuthor(value: string): Image;
+
+    getProfile(): string;
+    setProfile(value: string): Image;
+
+    getProfileImage(): string;
+    setProfileImage(value: string): Image;
+
+    getBio(): string;
+    setBio(value: string): Image;
+
+    getLikes(): number;
+    setLikes(value: number): Image;
 
 
     serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): Result.AsObject;
-    static toObject(includeInstance: boolean, msg: Result): Result.AsObject;
+    toObject(includeInstance?: boolean): Image.AsObject;
+    static toObject(includeInstance: boolean, msg: Image): Image.AsObject;
     static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
     static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: Result, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): Result;
-    static deserializeBinaryFromReader(message: Result, reader: jspb.BinaryReader): Result;
+    static serializeBinaryToWriter(message: Image, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): Image;
+    static deserializeBinaryFromReader(message: Image, reader: jspb.BinaryReader): Image;
 }
 
-export namespace Result {
+export namespace Image {
     export type AsObject = {
-        code: number,
+
+        urlsMap: Array<[string, string]>,
+        author: string,
+        profile: string,
+        profileImage: string,
+        bio: string,
+        likes: number,
     }
 }
 
-export class RollRequest extends jspb.Message { 
-    getCode(): number;
-    setCode(value: number): RollRequest;
-
+export class EmptyRequest extends jspb.Message { 
 
     serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): RollRequest.AsObject;
-    static toObject(includeInstance: boolean, msg: RollRequest): RollRequest.AsObject;
+    toObject(includeInstance?: boolean): EmptyRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: EmptyRequest): EmptyRequest.AsObject;
     static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
     static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: RollRequest, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): RollRequest;
-    static deserializeBinaryFromReader(message: RollRequest, reader: jspb.BinaryReader): RollRequest;
+    static serializeBinaryToWriter(message: EmptyRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): EmptyRequest;
+    static deserializeBinaryFromReader(message: EmptyRequest, reader: jspb.BinaryReader): EmptyRequest;
 }
 
-export namespace RollRequest {
+export namespace EmptyRequest {
     export type AsObject = {
-        code: number,
-    }
-}
-
-export class SingleRequest extends jspb.Message { 
-    getCode(): number;
-    setCode(value: number): SingleRequest;
-
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): SingleRequest.AsObject;
-    static toObject(includeInstance: boolean, msg: SingleRequest): SingleRequest.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: SingleRequest, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): SingleRequest;
-    static deserializeBinaryFromReader(message: SingleRequest, reader: jspb.BinaryReader): SingleRequest;
-}
-
-export namespace SingleRequest {
-    export type AsObject = {
-        code: number,
-    }
-}
-
-export class SupplyRequest extends jspb.Message { 
-    getCode(): number;
-    setCode(value: number): SupplyRequest;
-
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): SupplyRequest.AsObject;
-    static toObject(includeInstance: boolean, msg: SupplyRequest): SupplyRequest.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: SupplyRequest, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): SupplyRequest;
-    static deserializeBinaryFromReader(message: SupplyRequest, reader: jspb.BinaryReader): SupplyRequest;
-}
-
-export namespace SupplyRequest {
-    export type AsObject = {
-        code: number,
     }
 }

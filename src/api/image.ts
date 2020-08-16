@@ -27,4 +27,21 @@ export class ImageInfo implements Interface.ImageInfo {
     Author(): string {
         return this.author;
     }
+
+    Profile(): string {
+        return this.profile;
+    }
+    ProfileImage(): string | undefined {
+        return this.profile_image;
+    }
+    Bio(): string | undefined{
+        return this.bio;
+    }
+    Likes(): number | undefined {
+        if (this.likes) {
+            return + this.likes;
+        }
+
+        return;
+    }
 }

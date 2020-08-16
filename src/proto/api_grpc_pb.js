@@ -4,37 +4,26 @@
 var grpc = require('grpc');
 var api_pb = require('./api_pb.js');
 
-function serialize_proto_Result(arg) {
-  if (!(arg instanceof api_pb.Result)) {
-    throw new Error('Expected argument of type proto.Result');
+function serialize_proto_EmptyRequest(arg) {
+  if (!(arg instanceof api_pb.EmptyRequest)) {
+    throw new Error('Expected argument of type proto.EmptyRequest');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
-function deserialize_proto_Result(buffer_arg) {
-  return api_pb.Result.deserializeBinary(new Uint8Array(buffer_arg));
+function deserialize_proto_EmptyRequest(buffer_arg) {
+  return api_pb.EmptyRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_proto_RollRequest(arg) {
-  if (!(arg instanceof api_pb.RollRequest)) {
-    throw new Error('Expected argument of type proto.RollRequest');
+function serialize_proto_Image(arg) {
+  if (!(arg instanceof api_pb.Image)) {
+    throw new Error('Expected argument of type proto.Image');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
-function deserialize_proto_RollRequest(buffer_arg) {
-  return api_pb.RollRequest.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_proto_SingleRequest(arg) {
-  if (!(arg instanceof api_pb.SingleRequest)) {
-    throw new Error('Expected argument of type proto.SingleRequest');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_proto_SingleRequest(buffer_arg) {
-  return api_pb.SingleRequest.deserializeBinary(new Uint8Array(buffer_arg));
+function deserialize_proto_Image(buffer_arg) {
+  return api_pb.Image.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 
@@ -44,23 +33,12 @@ var ApiService = exports.ApiService = {
     path: '/proto.Api/Single',
     requestStream: false,
     responseStream: false,
-    requestType: api_pb.SingleRequest,
-    responseType: api_pb.Result,
-    requestSerialize: serialize_proto_SingleRequest,
-    requestDeserialize: deserialize_proto_SingleRequest,
-    responseSerialize: serialize_proto_Result,
-    responseDeserialize: deserialize_proto_Result,
-  },
-  roll: {
-    path: '/proto.Api/Roll',
-    requestStream: false,
-    responseStream: false,
-    requestType: api_pb.RollRequest,
-    responseType: api_pb.Result,
-    requestSerialize: serialize_proto_RollRequest,
-    requestDeserialize: deserialize_proto_RollRequest,
-    responseSerialize: serialize_proto_Result,
-    responseDeserialize: deserialize_proto_Result,
+    requestType: api_pb.EmptyRequest,
+    responseType: api_pb.Image,
+    requestSerialize: serialize_proto_EmptyRequest,
+    requestDeserialize: deserialize_proto_EmptyRequest,
+    responseSerialize: serialize_proto_Image,
+    responseDeserialize: deserialize_proto_Image,
   },
 };
 

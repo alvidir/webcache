@@ -1,9 +1,9 @@
 import http from 'http';
 import url from 'url';
 import { ParsedUrlQuery } from 'querystring';
-import { GetInstance as CacheInstance } from '../cache/public'
-import { GetInstance as UnsplashInstance } from '../api/unsplash'
-import { Callback, ImageInfo } from '../api/interfaces'
+import { GetInstance as CacheInstance } from '../cache/public';
+import { GetInstance as UnsplashInstance } from '../api/unsplash';
+import { Callback, ImageInfo } from '../api/interfaces';
 // fetch is required by the unsplash api
 global.fetch = require('node-fetch');
 

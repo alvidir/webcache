@@ -1,28 +1,19 @@
 syntax = "proto3";
 package proto;
 
-// Result description
-message Result {
-  int32 code = 1;
+// Image description
+message Image {
+  map<string, string> urls = 1;
+  string author = 2;
+  string profile = 3;
+  string profile_image = 4;
+  string bio = 5;
+  int32 likes = 6;
 }
 
-// Roll call description
-message RollRequest {
-  int32 code = 1;
-}
-
-// Single call description
-message SingleRequest {
-  int32 code = 1;
-}
-
-// Supply call description
-message SupplyRequest {
-  int32 code = 1;
-}
+message EmptyRequest {}
 
 // API Service
 service Api {
-    rpc Single(SingleRequest) returns (Result);
-    rpc Roll(RollRequest) returns (Result);
+    rpc Single(EmptyRequest) returns (Image);
 }

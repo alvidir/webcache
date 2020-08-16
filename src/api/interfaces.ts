@@ -7,6 +7,10 @@ export interface ImageInfo {
     Update(author: string, urls: string): void;
     Author(): string;
     Urls(): string;
+    Profile(): string;
+    ProfileImage(): string | undefined;
+    Bio(): string | undefined;
+    Likes(): number | undefined;
 }
 
 export interface UnsplashApi {
