@@ -1,31 +1,32 @@
-FROM node:lts-alpine as builder
+FROM node:latest as builder
 
 LABEL maintainer="Hector Morales <hector.morales.carnice@gmail.com>"
 LABEL repo-url="https://github.com/alvidir/unsplash-api"
 LABEL version="alpha"
 
-WORKDIR /srv
+WORKDIR /app
 
 # installing dependencies
-COPY package*.json /srv/
-RUN npm ci
+COPY package*.json ./
+RUN npm install
 
-COPY tsconfig.json /srv/
-COPY src/* /srv/src/
-RUN npm run tsc
-
-RUN npm ci --production
+COPY . .
+# Index.ts may does nothing by itself
+# However its presence in the project's root ensures that the build script
+# will keep the directory structure of this project.
+RUN touch index.ts
+RUN npm run build
 
 # Execute server from typescript
 # CMD ["npx", "ts-node", "src/app.ts"]
 
 # start new image from scratch
-FROM alpine:latest
+FROM node:lts-alpine
 
 RUN apk add nodejs --no-cache
 
-WORKDIR /srv
-COPY --from=builder /srv/node_modules /srv/node_modules
-COPY --from=builder /srv/build /srv/
+WORKDIR /app
+COPY --from=builder /app/node_modules /app/node_modules
+COPY --from=builder /app/build/* /app/
 
 CMD ["node", "app.js"]

@@ -1,4 +1,5 @@
 import * as Interface from './interfaces';
+import { getDefaultSettings } from 'http2';
 
 export class ImageInfo implements Interface.ImageInfo {
     urls: string;

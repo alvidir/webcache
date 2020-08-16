@@ -4,7 +4,6 @@ import { ImageInfo } from '../api/interfaces';
 
 export class RandomImageCache implements Interfaces.Cache {
     current: ImageInfo[];
-    size: number;
     deadline?: number;
     last?: Date;
 
@@ -14,15 +13,13 @@ export class RandomImageCache implements Interfaces.Cache {
         }
 
         this.current = new Array(size);
-        this.size = size;
-
         // initialize cache images
         this.update();
     }
 
     private update() {
-        UnsplashApi.GetInstance().HandleRandomRequest(this.size, (imgs: ImageInfo[]): void => {
-            for (let index = 0; index < imgs.length && index < this.size; index++) {
+        UnsplashApi.GetInstance().HandleRandomRequest(this.current.length, (imgs: ImageInfo[]): void => {
+            for (let index = 0; index < imgs.length && index < this.current.length; index++) {
                 this.current[index] = imgs[index];
             }
 
@@ -42,7 +39,7 @@ export class RandomImageCache implements Interfaces.Cache {
 
     private getRandomIndex(): number {
         const min = Math.ceil(0);
-        const max = Math.floor(this.size);
+        const max = Math.floor(this.current.length);
         return Math.floor(Math.random() * (max - min + 1)) + min;
     }
 
@@ -72,7 +69,7 @@ export class RandomImageCache implements Interfaces.Cache {
 
     // GetSingle returns the item stored in the provided index
     GetByTag(tag: number): ImageInfo | undefined {
-        if (tag >= this.size) {
+        if (tag >= this.current.length) {
             return;
         }
 

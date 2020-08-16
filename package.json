@@ -8,7 +8,7 @@
     "main": "app.ts",
     "scripts": {
         "start": "node src/app.ts",
-        "tsc": "tsc -p . --outDir ./build"
+        "build": "tsc -p . --outDir ./build"
     },
     "dependencies": {
         "@types/dotenv": "^8.2.0",
