@@ -28,15 +28,6 @@ logs:
 	docker logs -f ${PROJECT}
 
 protoc:
-	#${GRPC_TOOLS_NODE_PROTOC} \
-  	#	--plugin="protoc-gen-ts=${PROTOC_GEN_TS_PATH}" \
-	#	--plugin="protoc-gen-grpc=${GRPC_TOOLS_NODE_PROTOC_PLUGIN}" \
-  	#	--grpc_out="${OUT_DIR}" \
-  	#	--js_out="import_style=commonjs,binary:${OUT_JS_DIR}" \
-  	#	--ts_out="${OUT_TS_DIR}" \
-  	#	-I ${PROTO_DIR} \
-	#	${PROTO_DIR}/*.proto
-
 	${GRPC_TOOLS_NODE_PROTOC} \
     	--js_out=import_style=commonjs,binary:${OUT_JS_DIR} \
     	--grpc_out=${OUT_JS_DIR} \
