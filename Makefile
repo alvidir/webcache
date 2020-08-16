@@ -15,7 +15,9 @@ build:
 	-t ${REPO}/${PROJECT}:${VERSION} -f ./dockerfile .
 
 run:
-	docker run -p 3001:3001 \
+	docker run \
+	--publish 3001:3001 \
+	--publish 3002:3002 \
 	--name=${PROJECT} \
 	--restart always \
 	-it ${REPO}/${PROJECT}:${VERSION}

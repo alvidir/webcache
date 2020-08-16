@@ -23,11 +23,14 @@ RUN npm run build
 # start new image from scratch
 FROM node:lts-alpine
 
-RUN apk add nodejs --no-cache
+RUN apk --no-cache add ca-certificates
+RUN apk --no-cache add nodejs
 
 WORKDIR /app
 COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/src/proto ./proto/
 COPY --from=builder /app/build/* ./
 COPY --from=builder /app/.env ./
 
+RUN npm rebuild
 CMD ["node", "app.js"]
