@@ -9,7 +9,8 @@ import { ParsedUrlQuery } from 'querystring';
 import environment from '../config';
 
 const apiKey: string = environment.ApiKey;
-const unsplash = new Unsplash({ accessKey: apiKey, timeout: 1000 });
+const timeout = + environment.ApiTimeout;
+const unsplash = new Unsplash({ accessKey: apiKey, timeout: timeout });
 
 class UnsplashApi implements Interface.UnsplashApi {
 

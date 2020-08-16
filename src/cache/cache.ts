@@ -20,9 +20,10 @@ export class RandomImageCache implements Interfaces.Cache {
     private update() {
         UnsplashApi.GetInstance().HandleRandomRequest(this.current.length, (imgs: ImageInfo[]): void => {
             for (let index = 0; index < imgs.length && index < this.current.length; index++) {
+                console.log(JSON.stringify(imgs[index]));
                 this.current[index] = imgs[index];
             }
-
+        
             this.last = new Date();
             console.log("Images cache has been updated at ", this.last.toDateString());
         });
@@ -40,7 +41,7 @@ export class RandomImageCache implements Interfaces.Cache {
     private getRandomIndex(): number {
         const min = Math.ceil(0);
         const max = Math.floor(this.current.length);
-        return Math.floor(Math.random() * (max - min + 1)) + min;
+        return Math.floor(Math.random() * (max - min)) + min;
     }
 
     private getRandomSlice(n: number): number[] {
