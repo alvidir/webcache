@@ -10,7 +10,7 @@ global.fetch = require('node-fetch');
 function ResponseSender(res: http.ServerResponse, response: any | undefined) {
     res.statusCode = response ? 200 : 400;
     if (!response){
-        response = "None";
+        response = '';
     }
 
     res.write(JSON.stringify(response))

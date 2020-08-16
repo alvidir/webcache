@@ -20,7 +20,6 @@ export class RandomImageCache implements Interfaces.Cache {
     private update() {
         UnsplashApi.GetInstance().HandleRandomRequest(this.current.length, (imgs: ImageInfo[]): void => {
             for (let index = 0; index < imgs.length && index < this.current.length; index++) {
-                console.log(JSON.stringify(imgs[index]));
                 this.current[index] = imgs[index];
             }
         
