@@ -1,4 +1,4 @@
-import { Server, ServerUnaryCall, sendUnaryData, ServerCredentials } from 'grpc';
+import { Server, ServerUnaryCall, sendUnaryData, ServerCredentials, credentials, ChannelCredentials } from 'grpc';
 import { IApiServer, ApiService } from '../proto/api_grpc_pb';
 import * as pb from '../proto/api_pb';
 import { GetInstance as CacheInstance } from '../cache/public';
@@ -48,7 +48,12 @@ export function GetInstance(): Server {
     return server;
 }
 
-const credential = ServerCredentials.createInsecure();
-export function GetCredential(): ServerCredentials {
-    return credential;
+const srv_credential = ServerCredentials.createInsecure();
+export function GetServerCredential(): ServerCredentials {
+    return srv_credential;
+}
+
+const ch_credential = credentials.createInsecure();
+export function GetChannelCredential(): ChannelCredentials {
+    return ch_credential;
 }

@@ -12,19 +12,19 @@ OUT_TS_DIR="./src/proto"
 
 build:
 	docker build --rm \
-	-t ${REPO}/${PROJECT}:${VERSION} -f ./dockerfile .
-
-run:
-	docker run \
-	--publish 3001:3001 \
-	--publish 3002:3002 \
-	--name=${PROJECT} \
-	--restart always \
-	-it ${REPO}/${PROJECT}:${VERSION}
+	-t ${REPO}/${PROJECT}:${VERSION} \
+	-f ./docker/api/dockerfile .
+	
+	docker build --rm \
+	-t ${PROJECT}/envoy:${VERSION} \
+	-f ./docker/envoy/dockerfile .
 
 stop:
 	docker stop ${PROJECT}
 	docker rm ${PROJECT}
+
+	docker stop ${PROJECT}-envoy
+	docker rm ${PROJECT}-envoy
 
 logs:
 	docker logs -f ${PROJECT}
@@ -43,6 +43,8 @@ protoc:
 		--plugin="protoc-gen-grpc=${GRPC_TOOLS_NODE_PROTOC_PLUGIN}" \
     	-I ${PROTO_DIR} \
     	${PROTO_DIR}/*.proto
+
+	protoc -I=. ${PROTO_DIR}/*.proto --plugin ./node_modules/.bin/protoc-gen-grpc-web --js_out=import_style=commonjs:./src --grpc-web_out=import_style=commonjs,mode=grpcwebtext:./src
 
 clear-proto:
 	find ./src/model -name \*pb.js -type f -delete
