@@ -1,6 +1,17 @@
 version: '3.8'
 
 services:
+    ### ENVOY PROXY ###
+    envoy:
+        container_name: unsplash-api-envoy
+        image: alvidir/unsplash-api:envoy
+        restart: always
+        ports:
+            - "8080:8080"
+            - "9901:9901"
+        networks: 
+            - backend
+
     ### BACKEND ###
     unsplash-api:
         container_name: unsplash-api
@@ -8,19 +19,6 @@ services:
         restart: always
         ports:
             - "3001:3001"
-        networks: 
-            - backend
-
-    ### ENVOY PROXY ###
-    envoy:
-        container_name: unsplash-api-envoy
-        image: unsplash-api/envoy:0.1.1
-        restart: always
-        depends_on:
-            - unsplash-api
-        ports:
-            - "8080:8080"
-            - "9901:9901"
         networks: 
             - backend
             

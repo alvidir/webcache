@@ -2,25 +2,25 @@ import * as Interface from './interfaces';
 import { getDefaultSettings } from 'http2';
 
 export class ImageInfo implements Interface.ImageInfo {
-    urls: string;
+    urls: any;
     author: string;
     profile: string;
     profile_image?: string;
     bio?: string;
     likes?: string;
 
-    constructor(author: string, urls: string, source: string) {
+    constructor(author: string, urls: any, source: string) {
         this.author = author;
         this.urls = urls;
         this.profile = source;
     }
 
-    Update(author: string, urls: string) {
+    Update(author: string, urls: any) {
         this.author = author;
         this.urls = urls;
     }
 
-    Urls(): string {
+    Urls(): any {
         return this.urls;
     }
 

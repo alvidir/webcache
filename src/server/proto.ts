@@ -4,8 +4,16 @@ import * as pb from '../proto/api_pb';
 import { GetInstance as CacheInstance } from '../cache/public';
 import {ImageInfo} from '../api/interfaces';
 
+function CopyMap(from: any, to: any){
+    const keys = Object.keys(from);
+    keys.forEach(function(value: string, index: number, array: string[]): void {
+        to[value] = from[value];
+    });
+}  
+
 function ProtobufAdapter(img: ImageInfo): pb.Image {
-    const urls: Map<string, string> = JSON.parse(img.Urls());
+    const urls = img.Urls();
+
     const likes = img.Likes();
     const bio = img.Bio();
     const prof_img = img.ProfileImage();
@@ -15,9 +23,7 @@ function ProtobufAdapter(img: ImageInfo): pb.Image {
     response.setProfile(img.Profile());
 
     let protomap = response.getUrlsMap();
-    urls.forEach(function(value: string, key: string, map: Map<string, string>): void {
-        protomap[key] = value
-    });
+    CopyMap(urls, protomap);
 
     if (likes){
         response.setLikes(likes);

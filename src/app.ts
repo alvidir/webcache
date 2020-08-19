@@ -8,7 +8,7 @@ import environment from './config';
 global.fetch = require('node-fetch');
 
 const cache_size = +environment.CacheSize;
-const cache_dead = +environment.CacheDeadline * 1000000; // cache deadline must be in seconds
+const cache_dead = +environment.CacheDeadline * 60000; // cache deadline must be in seconds
 const cache = CacheFactory.NewRandomImageCache(cache_size, cache_dead);
 Cache.InitGlobalCache(cache);
 
@@ -30,6 +30,25 @@ if (code != 0) {
 // Rest server
 const api_port = environment.RestServicePort;
 const api_address = api_port;
-ApiRest.GetInstance().listen(api_address)
+const rest_server = ApiRest.GetInstance().listen(api_address)
 
 console.log('Listenning as API server on address', prefix + api_address);
+
+// gRPC testing
+import { ApiClient } from './proto/api_grpc_pb';
+import { EmptyRequest } from './proto/api_pb';
+const ch_credential = Proto.GetChannelCredential();
+const client = new ApiClient(grpc_address, ch_credential);
+const req = new EmptyRequest();
+
+function callback(): void {
+    client.single(req, (err, _) => {
+        if (err) {
+            console.log("Got an error while testing gRPC server: shutting down");
+            Proto.GetInstance().forceShutdown();
+            rest_server.close();
+        }
+    });
+}
+
+setTimeout(callback, 1500);

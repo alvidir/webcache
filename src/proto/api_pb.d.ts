@@ -1,67 +1,54 @@
-// package: proto
-// file: api.proto
+import * as jspb from "google-protobuf"
 
-/* tslint:disable */
-/* eslint-disable */
+export class Image extends jspb.Message {
+  getUrlsMap(): jspb.Map<string, string>;
+  clearUrlsMap(): Image;
 
-import * as jspb from "google-protobuf";
+  getAuthor(): string;
+  setAuthor(value: string): Image;
 
-export class Image extends jspb.Message { 
+  getProfile(): string;
+  setProfile(value: string): Image;
 
-    getUrlsMap(): jspb.Map<string, string>;
-    clearUrlsMap(): void;
+  getProfileImage(): string;
+  setProfileImage(value: string): Image;
 
-    getAuthor(): string;
-    setAuthor(value: string): Image;
+  getBio(): string;
+  setBio(value: string): Image;
 
-    getProfile(): string;
-    setProfile(value: string): Image;
+  getLikes(): number;
+  setLikes(value: number): Image;
 
-    getProfileImage(): string;
-    setProfileImage(value: string): Image;
-
-    getBio(): string;
-    setBio(value: string): Image;
-
-    getLikes(): number;
-    setLikes(value: number): Image;
-
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): Image.AsObject;
-    static toObject(includeInstance: boolean, msg: Image): Image.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: Image, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): Image;
-    static deserializeBinaryFromReader(message: Image, reader: jspb.BinaryReader): Image;
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): Image.AsObject;
+  static toObject(includeInstance: boolean, msg: Image): Image.AsObject;
+  static serializeBinaryToWriter(message: Image, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): Image;
+  static deserializeBinaryFromReader(message: Image, reader: jspb.BinaryReader): Image;
 }
 
 export namespace Image {
-    export type AsObject = {
-
-        urlsMap: Array<[string, string]>,
-        author: string,
-        profile: string,
-        profileImage: string,
-        bio: string,
-        likes: number,
-    }
+  export type AsObject = {
+    urlsMap: Array<[string, string]>,
+    author: string,
+    profile: string,
+    profileImage: string,
+    bio: string,
+    likes: number,
+  }
 }
 
-export class EmptyRequest extends jspb.Message { 
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): EmptyRequest.AsObject;
-    static toObject(includeInstance: boolean, msg: EmptyRequest): EmptyRequest.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: EmptyRequest, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): EmptyRequest;
-    static deserializeBinaryFromReader(message: EmptyRequest, reader: jspb.BinaryReader): EmptyRequest;
+export class EmptyRequest extends jspb.Message {
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): EmptyRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: EmptyRequest): EmptyRequest.AsObject;
+  static serializeBinaryToWriter(message: EmptyRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): EmptyRequest;
+  static deserializeBinaryFromReader(message: EmptyRequest, reader: jspb.BinaryReader): EmptyRequest;
 }
 
 export namespace EmptyRequest {
-    export type AsObject = {
-    }
+  export type AsObject = {
+  }
 }
+

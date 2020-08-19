@@ -16,7 +16,7 @@ build:
 	-f ./docker/api/dockerfile .
 	
 	docker build --rm \
-	-t ${PROJECT}/envoy:${VERSION} \
+	-t ${REPO}/${PROJECT}:envoy \
 	-f ./docker/envoy/dockerfile .
 
 stop:
@@ -44,8 +44,8 @@ protoc:
     	-I ${PROTO_DIR} \
     	${PROTO_DIR}/*.proto
 
-	protoc -I=. ${PROTO_DIR}/*.proto --plugin ./node_modules/.bin/protoc-gen-grpc-web --js_out=import_style=commonjs:./src --grpc-web_out=import_style=commonjs,mode=grpcwebtext:./src
-
-clear-proto:
-	find ./src/model -name \*pb.js -type f -delete
-	find ./src/model -name \*pb.d.ts -type f -delete
+	protoc \
+	-I=. ${PROTO_DIR}/*.proto \
+	--plugin ./node_modules/.bin/protoc-gen-grpc-web \
+	--js_out=import_style=commonjs:./src \
+	--grpc-web_out=import_style=commonjs,mode=grpcwebtext:./src

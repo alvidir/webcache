@@ -4,9 +4,9 @@ import { ParsedUrlQuery } from 'querystring';
 export type Callback = (imgs: ImageInfo[]) => void;
 
 export interface ImageInfo {
-    Update(author: string, urls: string): void;
+    Update(author: string, urls: any): void;
     Author(): string;
-    Urls(): string;
+    Urls(): any;
     Profile(): string;
     ProfileImage(): string | undefined;
     Bio(): string | undefined;
