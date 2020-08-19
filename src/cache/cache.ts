@@ -32,11 +32,6 @@ export class RandomImageCache implements Interfaces.Cache {
         const last = this.last ? this.last.getTime() : 0;
         const now = new Date().getTime();
         const diff = now - last;
-
-        console.log(last);
-        console.log(now);
-        console.log(diff);
-        console.log(this.deadline);
         
         if (diff < 0 || this.deadline && diff > this.deadline) {
             this.update()
