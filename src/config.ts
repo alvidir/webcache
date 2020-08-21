@@ -1,9 +1,8 @@
 // Configure environment variables
-import * as dotenv from 'dotenv';
-dotenv.config();
+require('dotenv').config();
 
 export default {
-    AppHost: process.env.APP_HOST ?? 'localhost',
+    AppHost: process.env.APP_HOST ?? '127.0.0.1',
     RestServicePort: process.env.REST_SERVICE_PORT ?? '3001',
     ProtoServicePort: process.env.PROTO_SERVICE_PORT ?? '3002',
     ApiKey: process.env.API_KEY ?? 'None',

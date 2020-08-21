@@ -10,7 +10,7 @@ global.fetch = require('node-fetch');
 
 // seting up cache
 const cache_size = +environment.CacheSize;
-const cache_dead = +environment.CacheDeadline * 60000; // cache deadline must be in seconds
+const cache_dead = +environment.CacheDeadline * 1000; // cache deadline must be in seconds
 const cache = CacheFactory.NewRandomImageCache(cache_size, cache_dead);
 Cache.InitGlobalCache(cache);
 

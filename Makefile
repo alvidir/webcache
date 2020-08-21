@@ -15,9 +15,9 @@ build:
 	-t ${REPO}/${PROJECT}:${VERSION} \
 	-f ./docker/api/dockerfile .
 	
-	docker build --rm \
-	-t ${REPO}/${PROJECT}:envoy \
-	-f ./docker/envoy/dockerfile .
+	#docker build --rm \
+	#-t ${REPO}/${PROJECT}:${VERSION}-envoy \
+	#-f ./docker/envoy/dockerfile .
 
 stop:
 	docker stop ${PROJECT}

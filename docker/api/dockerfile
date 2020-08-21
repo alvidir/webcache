@@ -4,10 +4,12 @@ LABEL maintainer="Hector Morales <hector.morales.carnice@gmail.com>"
 LABEL repo-url="https://github.com/alvidir/unsplash-api"
 LABEL version="alpha"
 
+RUN apt update
+
 WORKDIR /app
 
 # installing dependencies
-COPY package*.json ./
+COPY package.json ./
 RUN npm --verbose install
 
 COPY . .
@@ -26,9 +28,6 @@ FROM node:lts-alpine
 LABEL maintainer="Hector Morales <hector.morales.carnice@gmail.com>"
 LABEL repo-url="https://github.com/alvidir/unsplash-api"
 LABEL version="alpha"
-
-EXPOSE 3001
-EXPOSE 3002
 
 RUN apk --no-cache add ca-certificates
 RUN apk --no-cache add nodejs

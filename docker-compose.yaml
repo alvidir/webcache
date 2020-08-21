@@ -21,6 +21,9 @@ services:
             - "3001:3001"
         networks: 
             - backend
+        environment: 
+            REST_SERVICE_PORT: 3030
+            PROTO_SERVICE_PORT: 9090
             
 networks:
     backend:
