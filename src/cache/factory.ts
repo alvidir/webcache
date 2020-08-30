@@ -1,8 +1,8 @@
-import { RandomImageCache } from './cache';
+import { WallpaperCache } from './cache';
 import { Cache } from './interfaces';
 
-export function NewRandomImageCache(size: number, timeout: number): Cache {
-    let instace = new RandomImageCache(size);
+export function NewWallpaperCache(size: number, timeout: number): Cache {
+    let instace = new WallpaperCache(size);
     instace.SetDeadline(timeout);
     return instace;
 }

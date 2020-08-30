@@ -8,11 +8,11 @@ const app = express();
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-export const SingleMethodPath = '/'
+export const WallpaperPath = '/wallpaper'
 
 // get call has cors enabled
-app.get(SingleMethodPath, cors(), (_: any, res: any) => {
-    const response = CacheInstance().GetSingle();
+app.get(WallpaperPath, cors(), (_: any, res: any) => {
+    const response = CacheInstance().GetWallpaper();
     res.send(response);
 });
 

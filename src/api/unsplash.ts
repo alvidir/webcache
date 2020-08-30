@@ -1,9 +1,6 @@
-import http from 'http';
 import Unsplash from 'unsplash-js';
 import * as Interface from './interfaces';
-import { ImageInfo } from './image';
 import { toJson } from 'unsplash-js';
-import { ParsedUrlQuery } from 'querystring';
 
 // required to get environment configuration
 import environment from '../config';
@@ -14,20 +11,12 @@ const unsplash = new Unsplash({ accessKey: apiKey, timeout: timeout });
 
 class UnsplashApi implements Interface.UnsplashApi {
 
-    private ParseSourceJSON(json: any): Interface.ImageInfo[] {
-        let stack: Interface.ImageInfo[] = new Array();
-        for (let index = 0; index < json.length || 0; index++) {
-            const data = json[index];
-            const author = data['user']['username'];
-            const source = data['user']['links']['html'];
-            const urls = data['urls'];
+    private ParseSourceJSON(json: any): string[] {
+        const size = json.length
+        let stack: string[] = new Array(size);
 
-            let image = new ImageInfo(author, urls, source);
-            image.profile_image = data['user']['profile_image']['medium'];
-            image.bio = data['user']['bio'];
-            image.likes = data['likes'];
-
-            stack.push(image);
+        for (let index = 0; index < size || 0; index++) {
+            stack[index] = json[index];
         }
 
         return stack;
@@ -37,7 +26,7 @@ class UnsplashApi implements Interface.UnsplashApi {
         console.log(err);
     }
 
-    async HandleRandomRequest(n: number, callback: Interface.Callback) {
+    async HandleWallpaperRequest(n: number, callback: Interface.Callback) {
         unsplash.photos.getRandomPhoto({
             username: undefined,
             query: undefined,
@@ -49,9 +38,6 @@ class UnsplashApi implements Interface.UnsplashApi {
             .then(this.ParseSourceJSON)
             .then(callback)
             .catch(this.HandleError);
-    }
-
-    async HandleQueryRequest(query: ParsedUrlQuery, callback: Interface.Callback) {
     }
 }
 
