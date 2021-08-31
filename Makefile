@@ -1,18 +1,13 @@
-VERSION=0.1.1
-PROJECT=unsplash-api
+VERSION=0.1.0
+PROJECT=webcache
 REPO=alvidir
 
 build:
-	docker build --rm \
-	-t ${REPO}/${PROJECT}:${VERSION} \
-	-f ./docker/api/dockerfile .
+	podman build -t ${REPO}/${PROJECT}:${VERSION} -f ./dockerfile .
 
-run:
-	docker run -it \
-	--publish 3030:3030 \
-	--name ${PROJECT} \
-	${REPO}/${PROJECT}:${VERSION}
+deploy:
+	podman-compose -f docker-compose.yaml up --remove-orphans
+	# delete -d in order to see output logs
 
-stop:
-	docker stop ${PROJECT}
-	docker rm ${PROJECT}
+undeploy:
+	podman-compose -f docker-compose.yaml down

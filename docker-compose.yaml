@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:      
+    webcache:
+        container_name: webcache-server
+        image: localhost/alvidir/webcache:0.1.0
+        restart: always
+        ports:
+            - 8080:8080
+        env_file:
+            - .env
