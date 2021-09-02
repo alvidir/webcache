@@ -4,10 +4,10 @@ import logging
 
 def run(path: str, sleep: float):
     if not path:
-        raise Exception("config directory must be set")
+        raise Exception("a config directory must be set")
 
     if not sleep or sleep < 0:
-        raise Exception("positive sleep time must be set")
+        raise Exception("a positive sleep time must be set")
         
     iteration_count = 0
 

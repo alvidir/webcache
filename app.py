@@ -2,8 +2,8 @@ import os
 import logging
 import threading
 import constants
-import config
-import api
+import browser
+import server
 
 from dotenv import load_dotenv
 
@@ -14,14 +14,11 @@ if __name__ == "__main__":
 
     config_path = os.getenv(constants.ENV_CONFIG_PATH)
     sleep_time = os.getenv(constants.ENV_SLEEP_TIME)
-    if sleep_time:
-        sleep_time = float(sleep_time)
-    else:
-        sleep_time = 0.
-
+    sleep_time = float(sleep_time) if sleep_time else None
+    
     fn_args = (config_path, sleep_time)
-    fn_config = threading.Thread(target=config.run, args=fn_args, daemon=True)
+    fn_config = threading.Thread(target=browser.run, args=fn_args, daemon=True)
     fn_config.start()
 
     server_port = os.getenv(constants.ENV_SERVER_PORT)
-    api.start(server_port)
+    server.run(server_port)

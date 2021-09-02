@@ -3,7 +3,8 @@ PROJECT=webcache
 REPO=alvidir
 
 build:
-	podman build -t ${REPO}/${PROJECT}:${VERSION} -f ./dockerfile .
+	podman build -t ${REPO}/${PROJECT}:${VERSION}-nginx -f ./docker/nginx/dockerfile .
+	podman build -t ${REPO}/${PROJECT}:${VERSION}-server -f ./docker/webcache/dockerfile .
 
 deploy:
 	podman-compose -f docker-compose.yaml up --remove-orphans
