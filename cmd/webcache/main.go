@@ -5,8 +5,6 @@ import (
 	"net/http"
 
 	util "github.com/alvidir/go-util"
-	"github.com/alvidir/webcache/logger"
-
 	"github.com/joho/godotenv"
 )
 
@@ -17,7 +15,7 @@ const (
 
 func init() {
 	if err := godotenv.Load(); err != nil {
-		logger.Log.Fatalf(err.Error())
+		//logger.Log.Fatalf(err.Error())
 	}
 }
 
