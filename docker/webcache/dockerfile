@@ -1,4 +1,4 @@
-FROM golang:latest as builder
+FROM docker.io/golang:latest as builder
 
 RUN apt update
 
@@ -9,10 +9,10 @@ RUN go mod download
 COPY . .
 
 # RUN go test ./...
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o tp-auth cmd/webcache/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o webcache cmd/webcache/main.go
 
 ######## Start a new stage from scratch #######
-FROM alpine:latest  
+FROM docker.io/alpine:latest  
 
 RUN apk --no-cache add ca-certificates
 

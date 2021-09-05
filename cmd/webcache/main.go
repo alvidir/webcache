@@ -16,13 +16,13 @@ const (
 	envNetwKey = "SERVICE_NETW"
 )
 
-func init() {
-	if err := godotenv.Load(); err != nil {
-		wcache.Log.Fatalf(err.Error())
-	}
-}
-
 func main() {
+	if err := godotenv.Load(); err != nil {
+		wcache.Log.WithFields(log.Fields{
+			"error": err.Error(),
+		}).Warn("No dotenv file has been found")
+	}
+
 	network, err := util.LookupNempEnv(envNetwKey)
 	if err != nil {
 		wcache.Log.WithFields(log.Fields{
