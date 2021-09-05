@@ -1,6 +1,9 @@
 package main
 
 import (
+	"net"
+	"net/http"
+
 	util "github.com/alvidir/go-util"
 	"github.com/alvidir/webcache/logger"
 
@@ -29,10 +32,10 @@ func main() {
 
 	}
 
-	// lis, err := net.Listen(network, address)
-	// if err != nil {
+	lis, err := net.Listen(network, address)
+	if err != nil {
 
-	// }
+	}
 
-	// http.ListenAndServe(":8080", nil)
+	http.ListenAndServe(":8080", nil)
 }
