@@ -5,35 +5,59 @@ import (
 	"net/http"
 
 	util "github.com/alvidir/go-util"
+	wcache "github.com/alvidir/webcache"
+	log "github.com/sirupsen/logrus"
+
 	"github.com/joho/godotenv"
 )
 
 const (
-	envPortKey = "SERVICE_PORT"
+	envAddrKey = "SERVICE_ADDR"
 	envNetwKey = "SERVICE_NETW"
 )
 
 func init() {
 	if err := godotenv.Load(); err != nil {
-		//logger.Log.Fatalf(err.Error())
+		wcache.Log.Fatalf(err.Error())
 	}
 }
 
 func main() {
 	network, err := util.LookupNempEnv(envNetwKey)
 	if err != nil {
-
+		wcache.Log.WithFields(log.Fields{
+			"error": err.Error(),
+			"var":   envNetwKey,
+		}).Fatal("Environment variable must be set")
 	}
 
-	address, err := util.LookupNempEnv(envPortKey)
+	address, err := util.LookupNempEnv(envAddrKey)
 	if err != nil {
-
+		wcache.Log.WithFields(log.Fields{
+			"error": err.Error(),
+			"var":   envAddrKey,
+		}).Fatal("Environment variable must be set")
 	}
 
 	lis, err := net.Listen(network, address)
 	if err != nil {
-
+		wcache.Log.WithFields(log.Fields{
+			"error":   err.Error(),
+			"network": network,
+			"address": address,
+		}).Fatal("Failed on listening")
 	}
 
-	http.ListenAndServe(":8080", nil)
+	wcache.Log.WithFields(log.Fields{
+		"network": network,
+		"address": address,
+	}).Info("Server listening and ready")
+
+	if err := http.Serve(lis, nil); err != nil {
+		wcache.Log.WithFields(log.Fields{
+			"error":   err.Error(),
+			"network": network,
+			"address": address,
+		}).Fatal("Failed serving")
+	}
 }
