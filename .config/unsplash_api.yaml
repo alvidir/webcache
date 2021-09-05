@@ -1,4 +1,4 @@
-app_name: unsplash_api
+app: unsplash_api
 endpoints: # afected endpoints for the current configuration
   - https://google.com
 
@@ -18,6 +18,6 @@ methods:
 cache:
   enabled: true
   timeout: 900 # timeout in seconds foreach entry
-  max_size: 32 # how many keys the cache can reach
+  capacity: 32 # how many keys the cache can reach
   on_methods:
     - GET # catch only get requests
