@@ -3,7 +3,6 @@ PROJECT=webcache
 REPO=alvidir
 
 build:
-	podman build -t ${REPO}/${PROJECT}:${VERSION}-nginx -f ./docker/nginx/dockerfile .
 	podman build -t ${REPO}/${PROJECT}:${VERSION}-server -f ./docker/webcache/dockerfile .
 
 deploy:

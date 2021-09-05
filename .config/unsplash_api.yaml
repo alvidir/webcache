@@ -1,0 +1,23 @@
+app_name: unsplash_api
+endpoints: # afected endpoints for the current configuration
+  - https://google.com
+
+headers: # global headers to add
+  XXX_A_CUSTOM_HEADER: header_value
+  XXX_ANOTHER_HEADER: another_value
+
+methods:
+  - name: GET
+    headers: # custom headers for get requests
+      XXX_JUST_IN_GET_HEADER: ghi 
+  - name: POST
+    enabled: false # block all post requests
+  - name: PUT
+    enabled: false # block all put requests
+
+cache:
+  enabled: true
+  timeout: 900 # timeout in seconds foreach entry
+  max_size: 32 # how many keys the cache can reach
+  on_methods:
+    - GET # catch only get requests

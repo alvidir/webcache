@@ -1,27 +1,9 @@
 version: '3.8'
 
 services:
-    nginx:
-        container_name: webcache-nginx
-        image: localhost/alvidir/webcache:0.1.0-nginx
-        ports:
-            - 8080:8080
-        networks:
-            - ingress
-        env_file:
-            - .env
-
     webcache:
-        container_name: webcache-server
-        image: localhost/alvidir/webcache:0.1.0-server
+        container_name: webcache
+        image: localhost/alvidir/webcache:0.1.0
         restart: always
-        networks:
-            - ingress
         env_file:
             - .env
-
-networks:
-    # Ingress network works as bridge between envoyproxy and the available services
-    ingress:
-        name: ingress
-        driver: bridge
