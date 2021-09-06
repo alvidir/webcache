@@ -1,4 +1,3 @@
-app: unsplash_api
 endpoints: # afected endpoints for the current configuration
   - https://google.com
 
@@ -14,6 +13,8 @@ methods:
     enabled: false # block all post requests
   - name: PUT
     enabled: false # block all put requests
+  - name: default
+    enabled: true # non listed method are enabled by default
 
 cache:
   enabled: true

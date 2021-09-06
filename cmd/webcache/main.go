@@ -6,14 +6,16 @@ import (
 
 	util "github.com/alvidir/go-util"
 	wcache "github.com/alvidir/webcache"
+	"github.com/fsnotify/fsnotify"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/joho/godotenv"
 )
 
 const (
-	envAddrKey = "SERVICE_ADDR"
-	envNetwKey = "SERVICE_NETW"
+	envAddrKey  = "SERVICE_ADDR"
+	envNetwKey  = "SERVICE_NETW"
+	envConfPath = "CONFIG_PATH"
 )
 
 func main() {
@@ -21,6 +23,31 @@ func main() {
 		wcache.Log.WithFields(log.Fields{
 			"error": err.Error(),
 		}).Warn("No dotenv file has been found")
+	}
+
+	config, err := util.LookupNempEnv(envConfPath)
+	if err != nil {
+		wcache.Log.WithFields(log.Fields{
+			"error": err.Error(),
+			"var":   envConfPath,
+		}).Fatal("Environment variable must be set")
+	}
+
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		wcache.Log.WithFields(log.Fields{
+			"error": err.Error(),
+		}).Fatal("Watcher could not be set")
+	}
+
+	defer watcher.Close()
+	go wcache.HandleConfigWatcher(watcher)
+
+	err = watcher.Add(config)
+	if err != nil {
+		wcache.Log.WithFields(log.Fields{
+			"error": err.Error(),
+		}).Fatal("Failed setting up the watcher")
 	}
 
 	network, err := util.LookupNempEnv(envNetwKey)
