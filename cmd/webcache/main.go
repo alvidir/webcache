@@ -4,10 +4,11 @@ import (
 	"net"
 	"net/http"
 
+	"log"
+
 	util "github.com/alvidir/go-util"
 	wcache "github.com/alvidir/webcache"
 	"github.com/fsnotify/fsnotify"
-	log "github.com/sirupsen/logrus"
 
 	"github.com/joho/godotenv"
 )
@@ -20,24 +21,17 @@ const (
 
 func main() {
 	if err := godotenv.Load(); err != nil {
-		wcache.Log.WithFields(log.Fields{
-			"error": err.Error(),
-		}).Warn("No dotenv file has been found")
+		log.Printf("No dotenv file has been found")
 	}
 
 	config, err := util.LookupNempEnv(envConfPath)
 	if err != nil {
-		wcache.Log.WithFields(log.Fields{
-			"error": err.Error(),
-			"var":   envConfPath,
-		}).Fatal("Environment variable must be set")
+		log.Fatalf("%s: %s", envConfPath, err)
 	}
 
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		wcache.Log.WithFields(log.Fields{
-			"error": err.Error(),
-		}).Fatal("Watcher could not be set")
+		log.Fatalf(err.Error())
 	}
 
 	defer watcher.Close()
@@ -45,46 +39,26 @@ func main() {
 
 	err = watcher.Add(config)
 	if err != nil {
-		wcache.Log.WithFields(log.Fields{
-			"error": err.Error(),
-		}).Fatal("Failed setting up the watcher")
+		log.Fatalf(err.Error())
 	}
 
 	network, err := util.LookupNempEnv(envNetwKey)
 	if err != nil {
-		wcache.Log.WithFields(log.Fields{
-			"error": err.Error(),
-			"var":   envNetwKey,
-		}).Fatal("Environment variable must be set")
+		log.Fatalf("%s: %s", envNetwKey, err)
 	}
 
 	address, err := util.LookupNempEnv(envAddrKey)
 	if err != nil {
-		wcache.Log.WithFields(log.Fields{
-			"error": err.Error(),
-			"var":   envAddrKey,
-		}).Fatal("Environment variable must be set")
+		log.Fatalf("%s: %s", envAddrKey, err)
 	}
 
 	lis, err := net.Listen(network, address)
 	if err != nil {
-		wcache.Log.WithFields(log.Fields{
-			"error":   err.Error(),
-			"network": network,
-			"address": address,
-		}).Fatal("Failed on listening")
+		log.Fatalf(err.Error())
 	}
 
-	wcache.Log.WithFields(log.Fields{
-		"network": network,
-		"address": address,
-	}).Info("Server listening and ready")
-
+	log.Printf("server listening on %s", address)
 	if err := http.Serve(lis, nil); err != nil {
-		wcache.Log.WithFields(log.Fields{
-			"error":   err.Error(),
-			"network": network,
-			"address": address,
-		}).Fatal("Failed serving")
+		log.Fatalf(err.Error())
 	}
 }

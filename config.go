@@ -1,30 +1,32 @@
 package webcache
 
 import (
+	"log"
 	"sync"
 
+	"github.com/alvidir/go-util"
 	"github.com/fsnotify/fsnotify"
 )
 
 type methodConfigFile struct {
-	name    string            `yaml:"name"`
-	headers map[string]string `yaml:"headers"`
-	enabled bool              `yaml:"enabled"`
+	Name    string            `yaml:"name"`
+	Headers map[string]string `yaml:"headers"`
+	Enabled bool              `yaml:"enabled"`
 }
 
 type cacheConfigFile struct {
-	timeout  int      `yaml:"timeout"`
-	capacity int      `yaml:"capacity"`
-	methods  []string `yaml:"methods"`
-	enabled  bool     `yaml:"enabled"`
+	Timeout  int      `yaml:"timeout"`
+	Capacity int      `yaml:"capacity"`
+	Methods  []string `yaml:"methods"`
+	Enabled  bool     `yaml:"enabled"`
 }
 
 // ConfigFile represents a configuration file for the webcache service
 type ConfigFile struct {
-	endpoints []string           `yaml:"endpoints"`
-	headers   map[string]string  `yaml:"headers"`
-	methods   []methodConfigFile `yaml:"methods"`
-	cache     cacheConfigFile    `yaml:"cache"`
+	Endpoints []string           `yaml:"endpoints"`
+	Headers   map[string]string  `yaml:"headers"`
+	Methods   []methodConfigFile `yaml:"methods"`
+	Cache     cacheConfigFile    `yaml:"cache"`
 }
 
 type config struct {
@@ -32,9 +34,15 @@ type config struct {
 	ConfigByEndpoint sync.Map
 }
 
-func HandleConfigWatcher(watcher *fsnotify.Watcher) {
-	log := Log.WithField("origin", "watcher")
+var configuration config
 
+func applySettings(file *ConfigFile, config *config) {
+}
+
+func removeSettings(file *ConfigFile, config *config) {
+}
+
+func HandleConfigWatcher(watcher *fsnotify.Watcher) {
 	for {
 		select {
 		case event, ok := <-watcher.Events:
@@ -42,9 +50,19 @@ func HandleConfigWatcher(watcher *fsnotify.Watcher) {
 				return
 			}
 
-			log.Println("event:", event)
-			if event.Op&fsnotify.Write == fsnotify.Write {
-				log.Println("modified file:", event.Name)
+			var file ConfigFile
+			if err := util.YamlEncoder.Unmarshaler().Path(event.Name, &file); err != nil {
+				log.Printf("%s: %s", event.Name, err)
+			}
+
+			if event.Op&fsnotify.Create == fsnotify.Create ||
+				event.Op&fsnotify.Write == fsnotify.Write {
+				log.Printf("configuration updates: %s", event.Name)
+				applySettings(&file, &configuration)
+
+			} else if event.Op&fsnotify.Remove == fsnotify.Remove {
+				log.Printf("config file removed: %s", event.Name)
+				removeSettings(&file, &configuration)
 			}
 
 		case err, ok := <-watcher.Errors:
