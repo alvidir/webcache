@@ -1,5 +1,7 @@
 github.com/alvidir/go-util v0.0.0-20210905173533-300f8394b57b h1:t8J+ztbhLQNE/SsXcc5Ud+Eb4K9+u6r11zJ3AkidB3c=
 github.com/alvidir/go-util v0.0.0-20210905173533-300f8394b57b/go.mod h1:i2dRSQot7kzC4TZF/fEgNthOrGsGwRGjU8+61Z0WcR0=
+github.com/alvidir/go-util v0.0.0-20210905210331-d3ce0adc0ee3 h1:MEEO5Gg14dvS3eOryFgHb6/dnszMiFxlRuwn0HId/8Y=
+github.com/alvidir/go-util v0.0.0-20210905210331-d3ce0adc0ee3/go.mod h1:i2dRSQot7kzC4TZF/fEgNthOrGsGwRGjU8+61Z0WcR0=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/fsnotify/fsnotify v1.5.1 h1:mZcQUHVQUQWoPXXtuf9yuEXKudkV2sx1E06UadKWpgI=

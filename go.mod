@@ -5,7 +5,6 @@ go 1.17
 require (
 	github.com/alvidir/go-util v0.0.0-20210905173533-300f8394b57b
 	github.com/joho/godotenv v1.3.0
-	github.com/sirupsen/logrus v1.8.1
 )
 
 require (
