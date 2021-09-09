@@ -32,9 +32,10 @@ type ConfigFile struct {
 type config struct {
 	CachesByEndpoint sync.Map
 	ConfigByEndpoint sync.Map
+	ConfigByFilename sync.Map
 }
 
-var configuration config
+var con config
 
 func applySettings(file *ConfigFile, config *config) {
 }
@@ -50,19 +51,30 @@ func HandleConfigWatcher(watcher *fsnotify.Watcher) {
 				return
 			}
 
-			var file ConfigFile
-			if err := util.YamlEncoder.Unmarshaler().Path(event.Name, &file); err != nil {
-				log.Printf("%s: %s", event.Name, err)
-			}
-
 			if event.Op&fsnotify.Create == fsnotify.Create ||
 				event.Op&fsnotify.Write == fsnotify.Write {
-				log.Printf("configuration updates: %s", event.Name)
-				applySettings(&file, &configuration)
+				log.Printf("%s: has been updated", event.Name)
+
+				var file ConfigFile
+				if err := util.YamlEncoder.Unmarshaler().Path(event.Name, &file); err != nil {
+					log.Printf("%s: %s", event.Name, err)
+					continue
+				}
+
+				applySettings(&file, &con)
 
 			} else if event.Op&fsnotify.Remove == fsnotify.Remove {
-				log.Printf("config file removed: %s", event.Name)
-				removeSettings(&file, &configuration)
+				log.Printf("%s: has been removed", event.Name)
+
+				v, ok := con.ConfigByFilename.Load(event.Name)
+				if !ok {
+					log.Printf("%s: was not applied", event.Name)
+					continue
+				}
+
+				if file, ok := v.(*ConfigFile); ok {
+					removeSettings(file, &con)
+				}
 			}
 
 		case err, ok := <-watcher.Errors:
