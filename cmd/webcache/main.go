@@ -24,7 +24,7 @@ func main() {
 		log.Printf("no dotenv file has been found")
 	}
 
-	config, err := util.LookupNempEnv(envConfPath)
+	config, err := util.LookupEnv(envConfPath)
 	if err != nil {
 		log.Fatalf("%s: %s", envConfPath, err)
 	}
@@ -42,12 +42,12 @@ func main() {
 		log.Fatalf(err.Error())
 	}
 
-	network, err := util.LookupNempEnv(envNetwKey)
+	network, err := util.LookupEnv(envNetwKey)
 	if err != nil {
 		log.Fatalf("%s: %s", envNetwKey, err)
 	}
 
-	address, err := util.LookupNempEnv(envAddrKey)
+	address, err := util.LookupEnv(envAddrKey)
 	if err != nil {
 		log.Fatalf("%s: %s", envAddrKey, err)
 	}
