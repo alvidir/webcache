@@ -31,7 +31,7 @@ cache:
   timeout: 3600 # for how long a cached response is valid (s)
   capacity: 32 # how many keys (rows) can store the cache
   on_methods:
-    - GET # catch only the response of GET requests
+    - GET # catch only responses of GET requests
 
 timeout: 3000 # how much long can it takes a request to get back a response (ms)
 ```
