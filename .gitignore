@@ -16,3 +16,4 @@
 
 # configuration files
 *.env
+.config/
