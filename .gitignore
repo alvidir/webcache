@@ -16,4 +16,6 @@
 
 # configuration files
 *.env
-.config/
+
+# testing config directory
+.config
