@@ -21,7 +21,7 @@ const (
 
 func main() {
 	if err := godotenv.Load(); err != nil {
-		log.Printf("No dotenv file has been found")
+		log.Printf("no dotenv file has been found")
 	}
 
 	config, err := util.LookupNempEnv(envConfPath)
