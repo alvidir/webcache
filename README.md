@@ -24,7 +24,7 @@ methods:
   - name: PUT
     enabled: false # block all PUT requests (405 - method not allowed)
   - name: default
-    enabled: true # non listed method are enabled by default
+    enabled: true # non listed method are disabled by default
 
 cache:
   enabled: true
