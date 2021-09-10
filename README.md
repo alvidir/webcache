@@ -32,6 +32,8 @@ cache:
   capacity: 32 # how many keys (rows) can store the cache
   on_methods:
     - GET # catch only responses of GET requests
+  headers: # headers to include in the response indexing 
+    - XXX_INCLUDE_HEADER
 
 timeout: 3000 # how much long can it takes a request to get back a response (ms)
 ```

@@ -14,3 +14,6 @@ undeploy:
 
 run:
 	go run cmd/webcache/main.go
+
+test:
+	go test -v -race ./...

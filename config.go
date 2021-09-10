@@ -1,7 +1,10 @@
 package webcache
 
 import (
+	"io/fs"
 	"log"
+	"path"
+	"regexp"
 	"sync"
 
 	"github.com/alvidir/go-util"
@@ -35,12 +38,43 @@ type config struct {
 	ConfigByFilename sync.Map
 }
 
-var con config
+var (
+	fregex, _ = regexp.Compile(`^.*\.(yaml|yml)`)
+	con       config
+)
 
-func applySettings(file *ConfigFile, config *config) {
+func applySettings(name string, file *ConfigFile, config *config) {
+	log.Printf("%s: its being processed", name)
+
 }
 
-func removeSettings(file *ConfigFile, config *config) {
+func removeSettings(name string, file *ConfigFile, config *config) {
+	log.Printf("%s: its being removed", name)
+}
+
+// ApplyConfigFiles takes a set of files and applies these ones that matches with the configuration structure
+func ApplyConfigFiles(files []fs.FileInfo, root string) error {
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+
+		if !fregex.MatchString(file.Name()) {
+			continue
+		}
+
+		fullpath := path.Join(root, file.Name())
+
+		var config ConfigFile
+		if err := util.YamlEncoder.Unmarshaler().Path(fullpath, &config); err != nil {
+			log.Printf("%s: %s", fullpath, err)
+			continue
+		}
+
+		applySettings(fullpath, &config, &con)
+	}
+
+	return nil
 }
 
 func HandleConfigWatcher(watcher *fsnotify.Watcher) {
@@ -51,9 +85,12 @@ func HandleConfigWatcher(watcher *fsnotify.Watcher) {
 				return
 			}
 
+			if !fregex.MatchString(event.Name) {
+				continue
+			}
+
 			if event.Op&fsnotify.Create == fsnotify.Create ||
 				event.Op&fsnotify.Write == fsnotify.Write {
-				log.Printf("%s: has been updated", event.Name)
 
 				var file ConfigFile
 				if err := util.YamlEncoder.Unmarshaler().Path(event.Name, &file); err != nil {
@@ -61,19 +98,17 @@ func HandleConfigWatcher(watcher *fsnotify.Watcher) {
 					continue
 				}
 
-				applySettings(&file, &con)
+				applySettings(event.Name, &file, &con)
 
 			} else if event.Op&fsnotify.Remove == fsnotify.Remove {
-				log.Printf("%s: has been removed", event.Name)
-
 				v, ok := con.ConfigByFilename.Load(event.Name)
 				if !ok {
-					log.Printf("%s: was not applied", event.Name)
+					log.Printf("%s: was not processed", event.Name)
 					continue
 				}
 
 				if file, ok := v.(*ConfigFile); ok {
-					removeSettings(file, &con)
+					removeSettings(event.Name, file, &con)
 				}
 			}
 
@@ -82,7 +117,7 @@ func HandleConfigWatcher(watcher *fsnotify.Watcher) {
 				return
 			}
 
-			log.Println("error:", err)
+			log.Println(err)
 		}
 	}
 }

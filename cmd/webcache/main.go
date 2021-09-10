@@ -1,8 +1,10 @@
 package main
 
 import (
+	"io/ioutil"
 	"net"
 	"net/http"
+	"regexp"
 
 	"log"
 
@@ -14,32 +16,47 @@ import (
 )
 
 const (
-	envAddrKey  = "SERVICE_ADDR"
-	envNetwKey  = "SERVICE_NETW"
-	envConfPath = "CONFIG_PATH"
+	envAddrKey     = "SERVICE_ADDR"
+	envNetwKey     = "SERVICE_NETW"
+	envConfPath    = "CONFIG_PATH"
+	envWatchConfig = "WATCH_CONFIG"
 )
+
+var configPath = "/etc/webcache"
 
 func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Printf("no dotenv file has been found")
 	}
 
-	config, err := util.LookupEnv(envConfPath)
-	if err != nil {
-		log.Fatalf("%s: %s", envConfPath, err)
+	if path, err := util.LookupEnv(envConfPath); err == nil {
+		configPath = path
 	}
 
-	watcher, err := fsnotify.NewWatcher()
+	files, err := ioutil.ReadDir(configPath)
 	if err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err)
 	}
 
-	defer watcher.Close()
-	go wcache.HandleConfigWatcher(watcher)
+	if err := wcache.ApplyConfigFiles(files, configPath); err != nil {
+		log.Println(err)
+	}
 
-	err = watcher.Add(config)
-	if err != nil {
-		log.Fatalf(err.Error())
+	if watch, err := util.LookupEnv(envWatchConfig); err == nil {
+		if match, err := regexp.MatchString("^(True|true)$", watch); err == nil && match {
+			watcher, err := fsnotify.NewWatcher()
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			defer watcher.Close()
+			go wcache.HandleConfigWatcher(watcher)
+
+			err = watcher.Add(configPath)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
 	}
 
 	network, err := util.LookupEnv(envNetwKey)
@@ -54,11 +71,11 @@ func main() {
 
 	lis, err := net.Listen(network, address)
 	if err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err)
 	}
 
 	log.Printf("server listening on %s", address)
 	if err := http.Serve(lis, nil); err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err)
 	}
 }
