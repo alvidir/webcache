@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -78,8 +79,15 @@ func main() {
 	}
 
 	http.HandleFunc("/", func(wr http.ResponseWriter, rq *http.Request) {
-		wcache.RequestMiddleware(rq, config)
+		data := rq.URL.Query().Get("q")
+		query, err := base64.StdEncoding.DecodeString(data)
+		if err != nil {
+			log.Println(err)
+			wr.WriteHeader(400)
+			return
+		}
 
+		log.Printf("%s: %s request", query, rq.Method)
 	})
 
 	log.Printf("server listening on %s", address)

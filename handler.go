@@ -30,7 +30,3 @@ func RequestDecorator(req *http.Request, headers map[string]string) {
 		req.Header.Add(key, value)
 	}
 }
-
-func RequestMiddleware(req *http.Request, config Config) *http.Response {
-	return nil
-}
