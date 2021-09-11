@@ -32,28 +32,25 @@ type ConfigFile struct {
 	Cache     cacheConfigFile    `yaml:"cache"`
 }
 
-type config struct {
-	CachesByEndpoint sync.Map
-	ConfigByEndpoint sync.Map
-	ConfigByFilename sync.Map
+type Config struct {
+	// cachesByEndpoint sync.Map
+	// configByEndpoint sync.Map
+	configByFilename sync.Map
 }
 
-var (
-	fregex, _ = regexp.Compile(`^.*\.(yaml|yml)`)
-	con       config
-)
+var fregex, _ = regexp.Compile(`^.*\.(yaml|yml)`)
 
-func applySettings(name string, file *ConfigFile, config *config) {
+func (config *Config) applySettings(name string, file *ConfigFile) {
 	log.Printf("%s: its being processed", name)
 
 }
 
-func removeSettings(name string, file *ConfigFile, config *config) {
+func (config *Config) removeSettings(name string, file *ConfigFile) {
 	log.Printf("%s: its being removed", name)
 }
 
 // ApplyConfigFiles takes a set of files and applies these ones that matches with the configuration structure
-func ApplyConfigFiles(files []fs.FileInfo, root string) error {
+func (config *Config) ApplyConfigFiles(files []fs.FileInfo, root string) error {
 	for _, file := range files {
 		if file.IsDir() {
 			continue
@@ -65,19 +62,20 @@ func ApplyConfigFiles(files []fs.FileInfo, root string) error {
 
 		fullpath := path.Join(root, file.Name())
 
-		var config ConfigFile
-		if err := util.YamlEncoder.Unmarshaler().Path(fullpath, &config); err != nil {
+		var configfile ConfigFile
+		if err := util.YamlEncoder.Unmarshaler().Path(fullpath, &configfile); err != nil {
 			log.Printf("%s: %s", fullpath, err)
 			continue
 		}
 
-		applySettings(fullpath, &config, &con)
+		config.applySettings(fullpath, &configfile)
 	}
 
 	return nil
 }
 
-func HandleConfigWatcher(watcher *fsnotify.Watcher) {
+// HandleConfigWatcher
+func (config *Config) HandleConfigWatcher(watcher *fsnotify.Watcher) {
 	for {
 		select {
 		case event, ok := <-watcher.Events:
@@ -98,17 +96,17 @@ func HandleConfigWatcher(watcher *fsnotify.Watcher) {
 					continue
 				}
 
-				applySettings(event.Name, &file, &con)
+				config.applySettings(event.Name, &file)
 
 			} else if event.Op&fsnotify.Remove == fsnotify.Remove {
-				v, ok := con.ConfigByFilename.Load(event.Name)
+				v, ok := config.configByFilename.Load(event.Name)
 				if !ok {
 					log.Printf("%s: was not processed", event.Name)
 					continue
 				}
 
 				if file, ok := v.(*ConfigFile); ok {
-					removeSettings(event.Name, file, &con)
+					config.removeSettings(event.Name, file)
 				}
 			}
 

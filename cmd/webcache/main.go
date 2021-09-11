@@ -22,7 +22,10 @@ const (
 	envWatchConfig = "WATCH_CONFIG"
 )
 
-var configPath = "/etc/webcache"
+var (
+	configPath = "/etc/webcache"
+	config     = wcache.Config{}
+)
 
 func main() {
 	if err := godotenv.Load(); err != nil {
@@ -38,7 +41,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if err := wcache.ApplyConfigFiles(files, configPath); err != nil {
+	if err := config.ApplyConfigFiles(files, configPath); err != nil {
 		log.Println(err)
 	}
 
@@ -50,7 +53,7 @@ func main() {
 			}
 
 			defer watcher.Close()
-			go wcache.HandleConfigWatcher(watcher)
+			go config.HandleConfigWatcher(watcher)
 
 			err = watcher.Add(configPath)
 			if err != nil {
@@ -73,6 +76,11 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	http.HandleFunc("/", func(wr http.ResponseWriter, rq *http.Request) {
+		wcache.RequestMiddleware(rq, config)
+
+	})
 
 	log.Printf("server listening on %s", address)
 	if err := http.Serve(lis, nil); err != nil {
