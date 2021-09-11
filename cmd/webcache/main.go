@@ -79,15 +79,19 @@ func main() {
 	}
 
 	http.HandleFunc("/", func(wr http.ResponseWriter, rq *http.Request) {
-		data := rq.URL.Query().Get("q")
-		query, err := base64.StdEncoding.DecodeString(data)
+		query := rq.URL.Query().Get("q")
+		uri, err := base64.StdEncoding.DecodeString(query)
 		if err != nil {
 			log.Println(err)
 			wr.WriteHeader(400)
 			return
 		}
 
-		log.Printf("%s: %s request", query, rq.Method)
+		log.Printf("%s: %s request", uri, rq.Method)
+		rq.RequestURI = string(uri)
+
+		resp := wcache.PerformRequest(rq, &config)
+		wcache.ForwardResponse(resp, wr)
 	})
 
 	log.Printf("server listening on %s", address)

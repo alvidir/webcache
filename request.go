@@ -30,3 +30,20 @@ func RequestDecorator(req *http.Request, headers map[string]string) {
 		req.Header.Add(key, value)
 	}
 }
+
+func PerformRequest(req *http.Request, config *Config) *http.Response {
+	return nil
+}
+
+func ForwardResponse(resp *http.Response, wr http.ResponseWriter) {
+	wr.WriteHeader(resp.StatusCode)
+
+	for key, values := range resp.Header {
+		for _, value := range values {
+			wr.Header().Add(key, value)
+		}
+	}
+
+	io.Copy(wr, resp.Body)
+	resp.Body.Close()
+}
