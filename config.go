@@ -1,7 +1,7 @@
 package webcache
 
 import (
-	"io/fs"
+	"io/ioutil"
 	"log"
 	"path"
 	"regexp"
@@ -32,7 +32,12 @@ type ConfigFile struct {
 	Cache     cacheConfigFile    `yaml:"cache"`
 }
 
-type Config struct {
+type Config interface {
+	ReadFiles(root string) error
+	AttachWatcher(watcher *fsnotify.Watcher)
+}
+
+type config struct {
 	// cachesByEndpoint sync.Map
 	// configByEndpoint sync.Map
 	configByFilename sync.Map
@@ -40,17 +45,26 @@ type Config struct {
 
 var fregex, _ = regexp.Compile(`^.*\.(yaml|yml)`)
 
-func (config *Config) applySettings(name string, file *ConfigFile) {
+func NewConfig() Config {
+	return &config{}
+}
+
+func (config *config) applySettings(name string, file *ConfigFile) {
 	log.Printf("%s: its being processed", name)
 
 }
 
-func (config *Config) removeSettings(name string, file *ConfigFile) {
+func (config *config) removeSettings(name string, file *ConfigFile) {
 	log.Printf("%s: its being removed", name)
 }
 
-// ApplyConfigFiles takes a set of files and applies these ones that matches with the configuration structure
-func (config *Config) ApplyConfigFiles(files []fs.FileInfo, root string) error {
+// ReadFiles takes a set of files and applies these ones that matches with the configuration structure
+func (config *config) ReadFiles(root string) error {
+	files, err := ioutil.ReadDir(root)
+	if err != nil {
+		return err
+	}
+
 	for _, file := range files {
 		if file.IsDir() {
 			continue
@@ -74,8 +88,8 @@ func (config *Config) ApplyConfigFiles(files []fs.FileInfo, root string) error {
 	return nil
 }
 
-// HandleConfigWatcher
-func (config *Config) HandleConfigWatcher(watcher *fsnotify.Watcher) {
+// AttachWatcher takes a fs watchers and waits for any update, create or delete event from it
+func (config *config) AttachWatcher(watcher *fsnotify.Watcher) {
 	for {
 		select {
 		case event, ok := <-watcher.Events:

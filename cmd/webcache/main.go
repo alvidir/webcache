@@ -1,8 +1,6 @@
 package main
 
 import (
-	"encoding/base64"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"regexp"
@@ -25,7 +23,7 @@ const (
 
 var (
 	configPath = "/etc/webcache"
-	config     = wcache.Config{}
+	config     = wcache.NewConfig()
 )
 
 func main() {
@@ -37,12 +35,7 @@ func main() {
 		configPath = path
 	}
 
-	files, err := ioutil.ReadDir(configPath)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	if err := config.ApplyConfigFiles(files, configPath); err != nil {
+	if err := config.ReadFiles(configPath); err != nil {
 		log.Println(err)
 	}
 
@@ -54,7 +47,7 @@ func main() {
 			}
 
 			defer watcher.Close()
-			go config.HandleConfigWatcher(watcher)
+			go config.AttachWatcher(watcher)
 
 			err = watcher.Add(configPath)
 			if err != nil {
@@ -78,22 +71,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	http.HandleFunc("/", func(wr http.ResponseWriter, rq *http.Request) {
-		query := rq.URL.Query().Get("q")
-		uri, err := base64.StdEncoding.DecodeString(query)
-		if err != nil {
-			log.Println(err)
-			wr.WriteHeader(400)
-			return
-		}
-
-		log.Printf("%s: %s request", uri, rq.Method)
-		rq.RequestURI = string(uri)
-
-		resp := wcache.PerformRequest(rq, &config)
-		wcache.ForwardResponse(resp, wr)
-	})
-
+	http.HandleFunc("/", wcache.NewHandler(config))
 	log.Printf("server listening on %s", address)
 	if err := http.Serve(lis, nil); err != nil {
 		log.Fatal(err)
