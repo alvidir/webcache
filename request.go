@@ -7,9 +7,9 @@ import (
 	"sort"
 )
 
-type ResponseProvider interface {
-	LoadResponse(tag string) *http.Response
-	StoreResponse(tag string, res *http.Response)
+// HttpFilters represents a set of filters to apply over http requests 
+type HttpFilters interface {
+
 }
 
 func HashRequest(rq *http.Request, headers []string) string {
@@ -34,16 +34,6 @@ func DecorateRequest(req *http.Request, headers map[string]string) {
 	for key, value := range headers {
 		req.Header.Add(key, value)
 	}
-}
-
-func PerformRequest(req *http.Request, provider ResponseProvider) (resp *http.Response, err error) {
-	client := http.Client{}
-	if provider != nil {
-		return
-	}
-
-	resp, err = client.Do(req)
-	return
 }
 
 func ForwardResponse(resp *http.Response, wr http.ResponseWriter) (err error) {

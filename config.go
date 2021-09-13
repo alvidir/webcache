@@ -126,10 +126,8 @@ func (config *Config) AttachWatcher(watcher *fsnotify.Watcher) {
 	}
 }
 
-func (config *Config) LoadResponse(tag string) *http.Response {
-	return nil
-}
-
-func (config *Config) StoreResponse(tag string, res *http.Response) {
-	
+func (config *Config) PerformRequest(req *http.Request) (resp *http.Response, err error) {
+	client := http.Client{}
+	resp, err = client.Do(req)
+	return
 }
