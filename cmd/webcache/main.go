@@ -23,7 +23,7 @@ const (
 
 var (
 	configPath = "/etc/webcache"
-	config     = wcache.NewConfig()
+	config     = wcache.Config{}
 )
 
 func main() {
@@ -71,7 +71,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	http.HandleFunc("/", wcache.NewHandler(config))
+	http.HandleFunc("/", wcache.NewHandler(&config))
 	log.Printf("server listening on %s", address)
 	if err := http.Serve(lis, nil); err != nil {
 		log.Fatal(err)

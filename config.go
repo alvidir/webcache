@@ -6,6 +6,7 @@ import (
 	"path"
 	"regexp"
 	"sync"
+	"net/http"
 
 	"github.com/alvidir/go-util"
 	"github.com/fsnotify/fsnotify"
@@ -32,12 +33,7 @@ type ConfigFile struct {
 	Cache     cacheConfigFile    `yaml:"cache"`
 }
 
-type Config interface {
-	ReadFiles(root string) error
-	AttachWatcher(watcher *fsnotify.Watcher)
-}
-
-type config struct {
+type Config struct {
 	// cachesByEndpoint sync.Map
 	// configByEndpoint sync.Map
 	configByFilename sync.Map
@@ -45,21 +41,17 @@ type config struct {
 
 var fregex, _ = regexp.Compile(`^.*\.(yaml|yml)`)
 
-func NewConfig() Config {
-	return &config{}
-}
-
-func (config *config) applySettings(name string, file *ConfigFile) {
+func (config *Config) applySettings(name string, file *ConfigFile) {
 	log.Printf("%s: its being processed", name)
 
 }
 
-func (config *config) removeSettings(name string, file *ConfigFile) {
+func (config *Config) removeSettings(name string, file *ConfigFile) {
 	log.Printf("%s: its being removed", name)
 }
 
 // ReadFiles takes a set of files and applies these ones that matches with the configuration structure
-func (config *config) ReadFiles(root string) error {
+func (config *Config) ReadFiles(root string) error {
 	files, err := ioutil.ReadDir(root)
 	if err != nil {
 		return err
@@ -89,7 +81,7 @@ func (config *config) ReadFiles(root string) error {
 }
 
 // AttachWatcher takes a fs watchers and waits for any update, create or delete event from it
-func (config *config) AttachWatcher(watcher *fsnotify.Watcher) {
+func (config *Config) AttachWatcher(watcher *fsnotify.Watcher) {
 	for {
 		select {
 		case event, ok := <-watcher.Events:
@@ -132,4 +124,12 @@ func (config *config) AttachWatcher(watcher *fsnotify.Watcher) {
 			log.Println(err)
 		}
 	}
+}
+
+func (config *Config) LoadResponse(tag string) *http.Response {
+	return nil
+}
+
+func (config *Config) StoreResponse(tag string, res *http.Response) {
+	
 }

@@ -7,6 +7,11 @@ import (
 	"sort"
 )
 
+type ResponseProvider interface {
+	LoadResponse(tag string) *http.Response
+	StoreResponse(tag string, res *http.Response)
+}
+
 func HashRequest(rq *http.Request, headers []string) string {
 	h := md5.New()
 	io.WriteString(h, rq.Method)
@@ -31,9 +36,9 @@ func DecorateRequest(req *http.Request, headers map[string]string) {
 	}
 }
 
-func PerformRequest(req *http.Request, config Config) (resp *http.Response, err error) {
+func PerformRequest(req *http.Request, provider ResponseProvider) (resp *http.Response, err error) {
 	client := http.Client{}
-	if config != nil {
+	if provider != nil {
 		return
 	}
 
