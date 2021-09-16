@@ -7,11 +7,6 @@ import (
 	"sort"
 )
 
-// HttpFilters represents a set of filters to apply over http requests 
-type HttpFilters interface {
-
-}
-
 func HashRequest(rq *http.Request, headers []string) string {
 	h := md5.New()
 	io.WriteString(h, rq.Method)
@@ -28,12 +23,6 @@ func HashRequest(rq *http.Request, headers []string) string {
 	}
 
 	return string(h.Sum(nil))
-}
-
-func DecorateRequest(req *http.Request, headers map[string]string) {
-	for key, value := range headers {
-		req.Header.Add(key, value)
-	}
 }
 
 func ForwardResponse(resp *http.Response, wr http.ResponseWriter) (err error) {

@@ -1,12 +1,14 @@
 package webcache
 
 import (
+	"encoding/base64"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"path"
 	"regexp"
 	"sync"
-	"net/http"
+	"time"
 
 	"github.com/alvidir/go-util"
 	"github.com/fsnotify/fsnotify"
@@ -31,6 +33,7 @@ type ConfigFile struct {
 	Headers   map[string]string  `yaml:"headers"`
 	Methods   []methodConfigFile `yaml:"methods"`
 	Cache     cacheConfigFile    `yaml:"cache"`
+	Timeout   time.Duration      `ỳaml:"timeout"`
 }
 
 type Config struct {
@@ -126,8 +129,31 @@ func (config *Config) AttachWatcher(watcher *fsnotify.Watcher) {
 	}
 }
 
+func (config *Config) DecorateRequest(req *http.Request) (*http.Request, error) {
+	base := path.Base(req.RequestURI)
+	path, err := base64.StdEncoding.DecodeString(base)
+	if err != nil {
+		return nil, err
+	}
+
+	uri := string(path)
+	req, err = http.NewRequest(req.Method, uri, req.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	// for key, value := range config.Headers(uri, req.Method) {
+	// 	req.Header.Add(key, value)
+	// }
+
+	return req, nil
+}
+
 func (config *Config) PerformRequest(req *http.Request) (resp *http.Response, err error) {
-	client := http.Client{}
+	client := http.Client{
+		Timeout: 3 * time.Second,
+	}
+
 	resp, err = client.Do(req)
 	return
 }
