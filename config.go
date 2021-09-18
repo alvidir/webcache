@@ -14,12 +14,6 @@ import (
 	"github.com/fsnotify/fsnotify"
 )
 
-type methodConfigFile struct {
-	Name    string            `yaml:"name"`
-	Headers map[string]string `yaml:"headers"`
-	Enabled bool              `yaml:"enabled"`
-}
-
 type cacheConfigFile struct {
 	Timeout  int      `yaml:"timeout"`
 	Capacity int      `yaml:"capacity"`
@@ -27,15 +21,31 @@ type cacheConfigFile struct {
 	Enabled  bool     `yaml:"enabled"`
 }
 
-// ConfigFile represents a configuration file for the webcache service
-type ConfigFile struct {
+type methodConfigFile struct {
+	Name    string `yaml:"name"`
+	Enabled bool   `yaml:"enabled"`
+}
+
+type requestConfigFile struct {
+	Timeout int                `yaml:"timeout"`
+	Methods []methodConfigFile `yaml:"methods"`
+}
+
+type routerConfigFile struct {
 	Endpoints []string           `yaml:"endpoints"`
 	Headers   map[string]string  `yaml:"headers"`
 	Methods   []methodConfigFile `yaml:"methods"`
-	Cache     cacheConfigFile    `yaml:"cache"`
-	Timeout   time.Duration      `ỳaml:"timeout"`
+	Cached    bool               `yaml:"cached"`
 }
 
+// ConfigFile represents a configuration file for the webcache service
+type ConfigFile struct {
+	Cache   cacheConfigFile   `yaml:"cache"`
+	Request requestConfigFile `ỳaml:"request"`
+	Router  routerConfigFile  `ỳaml:"router"`
+}
+
+// Config represents a set of settings to apply over http requests and responses' cache
 type Config struct {
 	// cachesByEndpoint sync.Map
 	// configByEndpoint sync.Map
@@ -151,7 +161,7 @@ func (config *Config) DecorateRequest(req *http.Request) (*http.Request, error) 
 
 func (config *Config) PerformRequest(req *http.Request) (resp *http.Response, err error) {
 	client := http.Client{
-		Timeout: 3 * time.Second,
+		Timeout: 10 * time.Second, // default timeout
 	}
 
 	resp, err = client.Do(req)
