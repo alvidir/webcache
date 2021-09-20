@@ -11,7 +11,6 @@ By default, the server will watch for any file event into the  `/etc/webcache` d
 cache:
   enabled: true
   timeout: 3600 # for how long a cached response is valid (s)
-  capacity: 32 # how many keys (rows) can store the cache
   methods:
     - GET # catch only responses of GET requests
 
