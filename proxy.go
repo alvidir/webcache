@@ -104,7 +104,7 @@ func (reverse *ReverseProxy) getSingleHostReverseProxy(host string) (*httputil.R
 			return fn, nil
 		}
 
-		log.Printf("TYPE_ERROR %s - got wrong type, want *httputil.ReverseProxy", host)
+		log.Printf("TYPE_ERROR %s - want *httputil.ReverseProxy", host)
 	}
 
 	remoteUrl, err := url.Parse(host)

@@ -13,6 +13,10 @@ import (
 	"github.com/fsnotify/fsnotify"
 )
 
+const (
+	DEFAULT_KEYWORD = "default"
+)
+
 type CacheFile struct {
 	Timeout int      `yaml:"timeout"`
 	Methods []string `yaml:"methods"`
@@ -52,6 +56,12 @@ type Browser struct {
 	files   sync.Map
 }
 
+type eConfig struct {
+	router  RouterFile
+	request RequestFile
+	cache   CacheFile
+}
+
 func (browser *Browser) watch(ctx context.Context, w *fsnotify.Watcher) {
 	defer w.Close()
 
@@ -59,7 +69,7 @@ func (browser *Browser) watch(ctx context.Context, w *fsnotify.Watcher) {
 		select {
 		case event, ok := <-w.Events:
 			if !ok {
-				log.Printf("watcher's event arrived as: ko")
+				log.Printf("EVENT_KO watcher's event arrived as ko")
 				return
 			}
 
@@ -81,7 +91,7 @@ func (browser *Browser) watch(ctx context.Context, w *fsnotify.Watcher) {
 
 		case err := <-w.Errors:
 			if err != nil {
-				log.Printf("watcher has got errors: %s", err.Error())
+				log.Printf("WATCHER_ERROR %s", err.Error())
 				return
 			}
 
@@ -89,6 +99,45 @@ func (browser *Browser) watch(ctx context.Context, w *fsnotify.Watcher) {
 			return
 		}
 	}
+}
+
+func (browser *Browser) findEndpointConfig(endpoint string) (config *eConfig) {
+	var found bool
+
+	browser.files.Range(func(key, value interface{}) bool {
+		file, ok := value.(*File)
+		if !ok {
+			log.Printf("TYPE_ERROR %s - want *File", endpoint)
+			browser.files.Delete(key)
+			return true
+		}
+
+		config.cache = file.Cache
+		config.request = file.Request
+
+		for _, route := range file.Router {
+			for _, regex := range route.Endpoints {
+				comp, err := regexp.Compile(regex)
+				if err != nil {
+					log.Printf("REGEX_ERROR %s - %s", regex, err)
+					continue
+				}
+
+				if found = comp.MatchString(endpoint); found {
+					config.router = route
+					return false
+				}
+			}
+		}
+
+		return true
+	})
+
+	if !found {
+		return nil
+	}
+
+	return
 }
 
 func NewBrowser(regex string, decoder util.Unmarshaler) (*Browser, error) {
@@ -114,7 +163,7 @@ func (browser *Browser) ReadFile(p string) (err error) {
 
 	filename := path.Base(p)
 	browser.files.Store(filename, &f)
-	log.Printf("%s: successfully applied", p)
+	log.Printf("READ_FILE %s successfully applied", p)
 	return
 }
 
@@ -122,7 +171,7 @@ func (browser *Browser) ReadFile(p string) (err error) {
 func (browser *Browser) RemoveFile(p string) {
 	filename := path.Base(p)
 	browser.files.Delete(filename)
-	log.Printf("%s: successfully removed", p)
+	log.Printf("REMOVE_FILE %s successfully applied", p)
 }
 
 // ReadPath reads all files located at the provided path p that matches the browser's regex
@@ -155,7 +204,7 @@ func (browser *Browser) WatchPath(ctx context.Context, p string) error {
 	}
 
 	go browser.watch(ctx, watcher)
-	log.Printf("watcher is ready to accept events from %s", p)
+	log.Printf("WATCHER_READY %s", p)
 
 	if err = watcher.Add(p); err != nil {
 		return err
@@ -165,18 +214,37 @@ func (browser *Browser) WatchPath(ctx context.Context, p string) error {
 }
 
 // IsEndpointAllowed returns true if, and only if, the given enpoint is allowed
-func (browser *Browser) IsEndpointAllowed(string) bool {
-	return false
+func (browser *Browser) IsEndpointAllowed(endpoint string) bool {
+	config := browser.findEndpointConfig(endpoint)
+	return config != nil
 }
 
 // IsMethodAllowed returns true if, and only if, the given method is allowed for the given endpoint
-func (browser *Browser) IsMethodAllowed(string, string) bool {
+func (browser *Browser) IsMethodAllowed(endpoint string, method string) bool {
+	config := browser.findEndpointConfig(endpoint)
+	if config == nil {
+		return false
+	}
+
+	for _, rmethod := range config.router.Methods {
+		if rmethod.Name == DEFAULT_KEYWORD || rmethod.Name == method {
+			return rmethod.Enabled
+		}
+	}
+
+	for _, rmethod := range config.request.Methods {
+		if rmethod.Name == DEFAULT_KEYWORD || rmethod.Name == method {
+			return rmethod.Enabled
+		}
+	}
+
 	return false
 }
 
 // IsMethodCached returns true if, and only if, is allowed to cach responses for the given endpoint and method
-func (browser *Browser) IsMethodCached(string, string) bool {
-	return false
+func (browser *Browser) IsMethodCached(endpoint string, method string) bool {
+	config := browser.findEndpointConfig(endpoint)
+	return config.cache.Enabled && config.router.Cached
 }
 
 // ResponseTimeout returns the time a response is considered valid

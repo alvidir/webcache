@@ -14,8 +14,12 @@ services:
         container_name: webcache-server
         image: localhost/alvidir/webcache:0.1.0
         restart: always
+        volumes:
+            - .config:/app/.config
         networks: 
             - cache
+        depends_on:
+            - redis
         env_file:
             - .env
 
