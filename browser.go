@@ -27,8 +27,8 @@ type MethodFile struct {
 }
 
 type RequestFile struct {
-	Timeout int          `yaml:"timeout"`
-	Methods []MethodFile `yaml:"methods"`
+	Methods []MethodFile      `yaml:"methods"`
+	Headers map[string]string `yaml:"headers"`
 }
 
 type RouterFile struct {

@@ -7,7 +7,7 @@ Webcache is a reverse proxy that caches http responses in order to provide them 
 By default, Webcache uses a Redis server as a cache, and has its own configuration structure. However, all of this can be easily changed by just implementing the corresponding interfaces **Config** and **Cache**. 
 
 # Configuration
-By default, the server will expect to find any **.yaml** file in the  `/etc/webcache/` path as defined by the `CONFIG_PATH` environment variable. If no config file is found, or none of them follows the structure from the example down below, no request or method will be allowed by the webcache. 
+By default, the server will expect to find any **.yaml** file in the  `/etc/webcache/` path, or any other defined by `CONFIG_PATH` environment variable. If no config file is found, or none of them follows the structure from the example down below, no request or method will be allowed by the webcache. 
 
 ``` yaml
 cache:
@@ -17,23 +17,24 @@ cache:
     - GET # catch only responses of GET requests
 
 request:
-  timeout: 3000 # how much long can it takes a request to get back a response (ms)
-  
-  methods:
+  methods: # methods configuration for any endpoint listed in this file
     - name: default
       enabled: true # since non listed method are disabled by default, enable all them
     - name: DELETE
       cached: false # do not catch any DELETE response
 
+  headers: # global headers for any endpoint listed in this file
+    - XXX_GLOBAL_HEADER: global_header
+
 router:
   - endpoints: # afected endpoints for the current configuration (regex)
       - https?://(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,32}/?$
 
-    headers: # global headers to add to any request
+    headers: # custom headers for the endpoints above
       XXX_A_CUSTOM_HEADER: header_value
       XXX_ANOTHER_HEADER: another_value
 
-    methods:
+    methods: # methods configuration for the endpoints above
       - name: GET
         headers: # custom headers for GET requests
           XXX_JUST_IN_GET_HEADER: get_header_value
@@ -42,7 +43,7 @@ router:
       - name: PUT
         enabled: false # block all PUT requests (405 - method not allowed)
     
-    cached: true # enable caching for the provided endpoints
+    cached: true # enable caching responses from the endpoints above
 ```
 
 > The webcache's configuration is static by default, meaning that once a config file is applied, any update on it will take no effect over webcache's configuration. To enable event's watching for any config file or directory, the environment variable `WATCH_CONFIG` must be set as _True_. 
