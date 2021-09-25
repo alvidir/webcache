@@ -41,9 +41,9 @@ func (c *RedisCache) Store(key, value string, ttl time.Duration) error {
 	})
 }
 
-// Load returns the value for a given key, if any, otherwise false is returned
-func (c *RedisCache) Load(key string) (value string, exists bool) {
+// Load returns the value for a given key, if any, otherwise err != nil
+func (c *RedisCache) Load(key string) (value string, err error) {
 	ctx := context.Background()
-	exists = c.cache.Get(ctx, key, &value) == nil || len(value) == 0
+	err = c.cache.Get(ctx, key, &value)
 	return
 }

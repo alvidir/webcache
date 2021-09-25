@@ -1,11 +1,13 @@
 # webcache
-Web requests cache as a middleware
+Reverse proxy as an http cache and decorator
 
 # About
-Webcache is a middleware as a service that caches http responses in order to provide them fastly each time a same request is performed. As it is, it also works as a requests decorator able to modify http headers before the requests is redirected to the original target. 
+Webcache is a reverse proxy that caches http responses in order to provide them rapidly each time a same request is performed. Through its configuration file, webcache allows blocking hosts and methods (responding with _403: Forbidden_ or _405: Method not allowed_ respectively) and lets to specify new headers for all or some specific requests.
+
+By default, Webcache uses a Redis server as a cache, and has its own configuration structure. However, all of this can be easily changed by just implementing the corresponding interfaces **Config** and **Cache**. 
 
 # Configuration
-By default, the server will watch for any file event into the  `/etc/webcache` directory. There, the application expects to find a set of configuration files **.yaml** with the following structure:
+By default, the server will expect to find any **.yaml** file in the  `/etc/webcache/` path as defined by the `CONFIG_PATH` environment variable. If no config file is found, or none follows the structure from the exemple down below, no request or method will be allowed by the webcache. 
 
 ``` yaml
 cache:
@@ -13,6 +15,15 @@ cache:
   timeout: 3600 # for how long a cached response is valid (s)
   methods:
     - GET # catch only responses of GET requests
+
+request:
+  timeout: 3000 # how much long can it takes a request to get back a response (ms)
+  
+  methods:
+    - name: default
+      enabled: true # since non listed method are disabled by default, enable all them
+    - name: DELETE
+      cached: false # do not catch any DELETE response
 
 router:
   - endpoints: # afected endpoints for the current configuration (regex)
@@ -30,12 +41,8 @@ router:
         enabled: false # block all POST requests (405 - method not allowed)
       - name: PUT
         enabled: false # block all PUT requests (405 - method not allowed)
-      - name: DELETE
-        cached: false # do not catch DELETE responses for the provided endpoints
-      - name: default
-        enabled: true # since non listed method are disabled by default, enable all them
-
+    
     cached: true # enable caching for the provided endpoints
 ```
 
-> Any update over the config file will trigger an update over the server configuration. This behaviour can be turned off setting the environment variable `WATCH_CONFIG` to _False_
+> The configuration file is static by default, meaning that once it is applied, any change over it will take no effect over webcache's configuration. To enable event's watching for any config file or directory, the environment variable `WATCH_CONFIG` must be set as _True_. 

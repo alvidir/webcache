@@ -22,7 +22,7 @@ var (
 
 // A Cache represents an storage for request's responses
 type Cache interface {
-	Store(string, string, time.Duration)
+	Store(string, string, time.Duration) error
 	Load(string) (string, error)
 }
 
@@ -185,27 +185,35 @@ func (reverse *ReverseProxy) ServeHTTP(w http.ResponseWriter, req *http.Request)
 	if reverse.TargetURI != nil {
 		var err error
 		if host, err = reverse.TargetURI(req); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte("400: Bad request"))
+			return
 		}
 	}
 
 	if !reverse.config.IsEndpointAllowed(host) {
+		w.WriteHeader(http.StatusForbidden)
 		w.Write([]byte("403: Host forbidden " + host))
+		return
 	}
 
 	if !reverse.config.IsMethodAllowed(host, req.Method) {
+		w.WriteHeader(http.StatusMethodNotAllowed)
 		w.Write([]byte("405: Method not allowed " + host))
+		return
 	}
 
 	if body, err := reverse.getCachedResponseBody(host, req); err == nil {
 		w.Write([]byte(body))
 		return
 	} else if err != ErrNotCached && err != ErrNoContent {
+		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("500: Internal server error"))
 		return
 	}
 
 	if err := reverse.performHttpRequest(host, w, req); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("500: Internal server error"))
 	}
 }

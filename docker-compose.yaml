@@ -10,14 +10,14 @@ services:
         networks: 
             - cache
 
-    webcache:
-        container_name: webcache-server
-        image: localhost/alvidir/webcache:0.1.0
-        restart: always
-        networks: 
-            - cache
-        env_file:
-            - .env
+    # webcache:
+    #     container_name: webcache-server
+    #     image: localhost/alvidir/webcache:0.1.0
+    #     restart: always
+    #     networks: 
+    #         - cache
+    #     env_file:
+    #         - .env
 
 networks:
     # Cache network works as a bridge between webcache and the redis server
