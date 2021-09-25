@@ -129,7 +129,7 @@ func (browser *Browser) RemoveFile(p string) {
 func (browser *Browser) ReadPath(p string) error {
 	files, err := ioutil.ReadDir(p)
 	if err != nil {
-		return err
+		return browser.ReadFile(p)
 	}
 
 	for _, f := range files {

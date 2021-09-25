@@ -7,7 +7,7 @@ Webcache is a reverse proxy that caches http responses in order to provide them 
 By default, Webcache uses a Redis server as a cache, and has its own configuration structure. However, all of this can be easily changed by just implementing the corresponding interfaces **Config** and **Cache**. 
 
 # Configuration
-By default, the server will expect to find any **.yaml** file in the  `/etc/webcache/` path as defined by the `CONFIG_PATH` environment variable. If no config file is found, or none follows the structure from the exemple down below, no request or method will be allowed by the webcache. 
+By default, the server will expect to find any **.yaml** file in the  `/etc/webcache/` path as defined by the `CONFIG_PATH` environment variable. If no config file is found, or none of them follows the structure from the example down below, no request or method will be allowed by the webcache. 
 
 ``` yaml
 cache:
@@ -45,4 +45,4 @@ router:
     cached: true # enable caching for the provided endpoints
 ```
 
-> The configuration file is static by default, meaning that once it is applied, any change over it will take no effect over webcache's configuration. To enable event's watching for any config file or directory, the environment variable `WATCH_CONFIG` must be set as _True_. 
+> The webcache's configuration is static by default, meaning that once a config file is applied, any update on it will take no effect over webcache's configuration. To enable event's watching for any config file or directory, the environment variable `WATCH_CONFIG` must be set as _True_. 
