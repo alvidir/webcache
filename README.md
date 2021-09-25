@@ -24,7 +24,7 @@ request:
       cached: false # do not catch any DELETE response
 
   headers: # global headers for any endpoint listed in this file
-    - XXX_GLOBAL_HEADER: global_header
+    XXX_GLOBAL_HEADER: global_header
 
 router:
   - endpoints: # afected endpoints for the current configuration (regex)
