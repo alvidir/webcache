@@ -1,10 +1,10 @@
 # webcache
-Reverse proxy as an http cache and decorator
+Reverse proxy as an HTTP cache and requests decorator
 
 # About
 Webcache is a reverse proxy that caches http responses in order to provide them rapidly each time a same request is performed. Through its configuration file, webcache allows blocking hosts and methods (responding with _403: Forbidden_ or _405: Method not allowed_ respectively) and lets to specify new headers for all or some specific requests.
 
-By default, Webcache uses a Redis server as a cache, and has its own configuration structure. However, all of this can be easily changed by just implementing the corresponding interfaces **Config** and **Cache**. 
+By default, Webcache uses a Redis server as a cache, and has its own configuration structure. However, all of this can be easily customized by just implementing the corresponding interfaces **Config** and **Cache**. 
 
 # Configuration
 By default, the server will expect to find any **.yaml** file in the  `/etc/webcache/` path, or any other defined by `CONFIG_PATH` environment variable. If no config file is found, or none of them follows the structure from the example down below, no request or method will be allowed by the webcache. 
