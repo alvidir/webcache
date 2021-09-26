@@ -12,7 +12,7 @@ By default, the server will expect to find any **.yaml** file in the  `/etc/webc
 ``` yaml
 cache:
   enabled: true
-  timeout: 3600 # for how long a cached response is valid (s)
+  timeout: 1h # for how long a cached response is valid
   methods:
     - GET # catch only responses of GET requests
 

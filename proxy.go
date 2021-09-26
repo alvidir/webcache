@@ -31,7 +31,7 @@ type Config interface {
 	IsEndpointAllowed(string) bool
 	IsMethodAllowed(string, string) bool
 	IsMethodCached(string, string) bool
-	ResponseTimeout(string) time.Duration
+	ResponseLifetime(string) time.Duration
 	Headers(string, string) map[string]string
 }
 
@@ -89,7 +89,7 @@ func (reverse *ReverseProxy) buildTag(host string, req *http.Request) (tag strin
 	if reverse.HashRequest != nil {
 		tag, err = reverse.HashRequest(req)
 		if err != nil {
-			log.Printf("[%s] TAG_ERROR %s - %s", req.Method, host, err.Error())
+			log.Printf("[%s] REQ_TAG %s - %s", req.Method, host, err.Error())
 			return "", err
 		}
 	}
@@ -104,12 +104,12 @@ func (reverse *ReverseProxy) getSingleHostReverseProxy(host string) (*httputil.R
 			return fn, nil
 		}
 
-		log.Printf("TYPE_ERROR %s - want *httputil.ReverseProxy", host)
+		log.Printf("TYPE_ASSERT %s - want *httputil.ReverseProxy", host)
 	}
 
 	remoteUrl, err := url.Parse(host)
 	if err != nil {
-		log.Printf("URL_ERROR %s - %s", host, err.Error())
+		log.Printf("URL_PARSE %s - %s", host, err.Error())
 		return nil, err
 	}
 
@@ -153,7 +153,7 @@ func (reverse *ReverseProxy) includeCustomHeaders(host string, req *http.Request
 func (reverse *ReverseProxy) performHttpRequest(host string, w http.ResponseWriter, req *http.Request) error {
 	proxy, err := reverse.getSingleHostReverseProxy(host)
 	if err != nil {
-		log.Printf("[%s] PROXY_ERROR %s - %s", req.Method, host, err.Error())
+		log.Printf("[%s] PROXY %s - %s", req.Method, host, err.Error())
 		return err
 	}
 
@@ -172,7 +172,7 @@ func (reverse *ReverseProxy) performHttpRequest(host string, w http.ResponseWrit
 	}
 
 	if middleware.header < HTTP_CODE_BOUNDARY {
-		timeout := reverse.config.ResponseTimeout(host)
+		timeout := reverse.config.ResponseLifetime(host)
 		reverse.cache.Store(tag, string(middleware.body), timeout)
 	}
 
