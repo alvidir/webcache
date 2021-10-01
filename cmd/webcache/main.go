@@ -108,7 +108,7 @@ func main() {
 	cache := setupCache()
 	proxy := wcache.NewReverseProxy(config, cache)
 	proxy.TargetURI = func(req *http.Request) (string, error) {
-		if target := req.URL.Query().Get("uri"); len(target) == 0 {
+		if target := req.URL.Query().Get("target"); len(target) == 0 {
 			return "", wcache.ErrNoContent
 		} else {
 			return target, nil

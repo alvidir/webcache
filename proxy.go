@@ -75,14 +75,15 @@ func DigestRequest(rq *http.Request, params []string, headers []string) string {
 	io.WriteString(h, rq.Method)
 	io.WriteString(h, rq.RequestURI)
 
+	sort.Strings(params)
 	for _, param := range params {
-		label := fmt.Sprintf("%s%s%s", param, CONCAT_SEPARATOR, rq.URL.Query().Get(param))
+		label := fmt.Sprintf("%s%s", param, rq.URL.Query().Get(param))
 		io.WriteString(h, label)
 	}
 
 	sort.Strings(headers)
 	for _, header := range headers {
-		label := fmt.Sprintf("%s%s%s", header, CONCAT_SEPARATOR, rq.Header.Get(header))
+		label := fmt.Sprintf("%s%s", header, rq.Header.Get(header))
 		io.WriteString(h, label)
 	}
 
@@ -96,11 +97,11 @@ func DigestRequest(rq *http.Request, params []string, headers []string) string {
 // A ReverseProxy is a cached reverse proxy that captures responses in order to provide it in the future instead of
 // permorming the request each time
 type ReverseProxy struct {
-	TargetURI   func(req *http.Request) (string, error)
-	HashRequest func(req *http.Request) (string, error)
-	proxys      sync.Map
-	config      Config
-	cache       Cache
+	TargetURI     func(req *http.Request) (string, error)
+	DigestRequest func(req *http.Request) (string, error)
+	proxys        sync.Map
+	config        Config
+	cache         Cache
 }
 
 // NewReverseProxy returns a brand new ReverseProxy with the provided config and cache
@@ -114,9 +115,9 @@ func NewReverseProxy(config Config, cache Cache) *ReverseProxy {
 }
 
 func (reverse *ReverseProxy) buildTag(host string, req *http.Request) (tag string, err error) {
-	tag = req.Header.Get("ETag")
-	if reverse.HashRequest != nil {
-		tag, err = reverse.HashRequest(req)
+	tag = req.Header.Get(ETAG_SERVER_HEADER)
+	if reverse.DigestRequest != nil {
+		tag, err = reverse.DigestRequest(req)
 		if err != nil {
 			log.Printf("[%s] REQ_TAG %s - %s", req.Method, host, err.Error())
 			return "", err
@@ -214,6 +215,8 @@ func (reverse *ReverseProxy) ServeHTTP(w http.ResponseWriter, req *http.Request)
 	if reverse.TargetURI != nil {
 		var err error
 		if host, err = reverse.TargetURI(req); err != nil {
+			log.Printf("TARGET_URI %s", err)
+
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte("400: Bad request"))
 			return

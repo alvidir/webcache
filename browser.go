@@ -25,7 +25,7 @@ type CacheFile struct {
 
 type MethodFile struct {
 	Name    string            `yaml:"name"`
-	Enabled bool              `yaml:"enabled"`
+	Enabled *bool             `yaml:"enabled"`
 	Cached  bool              `yaml:"cached"`
 	Headers map[string]string `yaml:"headers"`
 }
@@ -101,10 +101,12 @@ func (browser *Browser) watch(ctx context.Context, w *fsnotify.Watcher) {
 	}
 }
 
-func (browser *Browser) findEndpointConfig(endpoint string) (config *eConfig, ok bool) {
+func (browser *Browser) findEndpointConfig(endpoint string) (config *eConfig, exists bool) {
+	config = new(eConfig)
+
 	browser.files.Range(func(key, value interface{}) bool {
 		file, ok := value.(*File)
-		if !ok {
+		if !ok || file == nil {
 			log.Printf("TYPE_ASSERT %s - want *File", endpoint)
 			browser.files.Delete(key)
 			return true
@@ -121,7 +123,7 @@ func (browser *Browser) findEndpointConfig(endpoint string) (config *eConfig, ok
 					continue
 				}
 
-				if ok = comp.MatchString(endpoint); ok {
+				if exists = comp.MatchString(endpoint); exists {
 					config.router = route
 					return false
 				}
@@ -226,13 +228,13 @@ func (browser *Browser) IsMethodAllowed(endpoint string, method string) bool {
 
 	for _, rmethod := range config.router.Methods {
 		if rmethod.Name == DEFAULT_KEYWORD || rmethod.Name == method {
-			return rmethod.Enabled
+			return rmethod.Enabled == nil || *rmethod.Enabled
 		}
 	}
 
 	for _, rmethod := range config.request.Methods {
 		if rmethod.Name == DEFAULT_KEYWORD || rmethod.Name == method {
-			return rmethod.Enabled
+			return rmethod.Enabled == nil || *rmethod.Enabled
 		}
 	}
 
