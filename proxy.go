@@ -16,6 +16,7 @@ import (
 const (
 	ETAG_SERVER_HEADER = "ETag"
 	HTTP_CODE_BOUNDARY = 400
+	CONCAT_SEPARATOR   = "::"
 )
 
 var (
@@ -68,15 +69,20 @@ func newHttpMiddleware(w http.ResponseWriter) *httpMiddleware {
 }
 
 // DigestRequest returns the md5 of the given request rq taking as input parameters the request's method,
-// the exact host and paths, all those listed headers and parameters, and the body, if any
-func DigestRequest(rq *http.Request, headers []string, params []string) string {
+// the exact host and path, all those listed query params and headers, and the body, if any
+func DigestRequest(rq *http.Request, params []string, headers []string) string {
 	h := md5.New()
 	io.WriteString(h, rq.Method)
 	io.WriteString(h, rq.RequestURI)
 
+	for _, param := range params {
+		label := fmt.Sprintf("%s%s%s", param, CONCAT_SEPARATOR, rq.URL.Query().Get(param))
+		io.WriteString(h, label)
+	}
+
 	sort.Strings(headers)
 	for _, header := range headers {
-		label := header + rq.Header.Get(header)
+		label := fmt.Sprintf("%s%s%s", header, CONCAT_SEPARATOR, rq.Header.Get(header))
 		io.WriteString(h, label)
 	}
 
