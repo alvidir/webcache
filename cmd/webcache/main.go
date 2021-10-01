@@ -107,6 +107,13 @@ func main() {
 	config := setupBrowser(ctx)
 	cache := setupCache()
 	proxy := wcache.NewReverseProxy(config, cache)
+	proxy.TargetURI = func(req *http.Request) (string, error) {
+		if target := req.URL.Query().Get("uri"); len(target) == 0 {
+			return "", wcache.ErrNoContent
+		} else {
+			return target, nil
+		}
+	}
 
 	network, err := util.LookupEnv(ENV_SERVICE_NETWORK)
 	if err != nil {
