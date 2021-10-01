@@ -1,11 +1,14 @@
 package webcache
 
 import (
+	"crypto/md5"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"sort"
 	"sync"
 	"time"
 )
@@ -62,6 +65,26 @@ func newHttpMiddleware(w http.ResponseWriter) *httpMiddleware {
 		body: make([]byte, 1024),
 		w:    w,
 	}
+}
+
+// DigestRequest returns the md5 of the given request rq taking as input parameters the request's method,
+// the exact host and paths, all those listed headers and parameters, and the body, if any
+func DigestRequest(rq *http.Request, headers []string, params []string) string {
+	h := md5.New()
+	io.WriteString(h, rq.Method)
+	io.WriteString(h, rq.RequestURI)
+
+	sort.Strings(headers)
+	for _, header := range headers {
+		label := header + rq.Header.Get(header)
+		io.WriteString(h, label)
+	}
+
+	if body, err := io.ReadAll(rq.Body); err == nil {
+		io.WriteString(h, string(body))
+	}
+
+	return string(h.Sum(nil))
 }
 
 // A ReverseProxy is a cached reverse proxy that captures responses in order to provide it in the future instead of
