@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httputil"
@@ -166,10 +165,10 @@ func (reverse *ReverseProxy) includeCustomHeaders(host string, req *http.Request
 	}
 }
 
-func (reverse *ReverseProxy) storeFileContent(tag string, host string, file *os.File) {
-	content, err := ioutil.ReadAll(file)
+func (reverse *ReverseProxy) storeFileContent(filename string, tag string, host string) {
+	content, err := reverse.manager.ReadFile(filename)
 	if err != nil {
-		log.Printf("READ_FILE %s - %s", file.Name(), err.Error())
+		log.Printf("READ_FILE %s - %s", filename, err.Error())
 		return
 	}
 
@@ -182,12 +181,12 @@ func (reverse *ReverseProxy) storeFileContent(tag string, host string, file *os.
 	}
 }
 
-func (reverse *ReverseProxy) storeOnSuccess(middleware *HttpMiddleware, tag string, host string, file *os.File) {
+func (reverse *ReverseProxy) storeOnSuccess(middleware *HttpMiddleware, filename string, tag string, host string) {
 	if middleware.header >= HTTP_CODE_BOUNDARY {
 		return
 	}
 
-	reverse.storeFileContent(tag, host, file)
+	reverse.storeFileContent(tag, host, filename)
 }
 
 func (reverse *ReverseProxy) performHttpRequest(host string, w http.ResponseWriter, req *http.Request) error {
@@ -212,11 +211,11 @@ func (reverse *ReverseProxy) performHttpRequest(host string, w http.ResponseWrit
 			return err
 		}
 
-		//defer reverse.manager.RemoveFile(filename)
+		defer reverse.manager.RemoveFile(filename)
 		defer file.Close()
 
 		middleware := NewHttpMiddleware(w, file)
-		defer reverse.storeOnSuccess(middleware, tag, host, file)
+		defer reverse.storeOnSuccess(middleware, filename, tag, host)
 
 		proxy.ServeHTTP(middleware, req)
 	} else {
