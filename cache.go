@@ -2,10 +2,16 @@ package webcache
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/go-redis/cache/v8"
 	"github.com/go-redis/redis/v8"
+)
+
+var (
+	ErrNotCached = fmt.Errorf("is not cached")
+	ErrNoContent = fmt.Errorf("has no content")
 )
 
 type RedisCache struct {
@@ -44,6 +50,9 @@ func (c *RedisCache) Store(key, value string, ttl time.Duration) error {
 // Load returns the value for a given key, if any, otherwise err != nil
 func (c *RedisCache) Load(key string) (value string, err error) {
 	ctx := context.Background()
-	err = c.cache.Get(ctx, key, &value)
+	if err = c.cache.Get(ctx, key, &value); err == cache.ErrCacheMiss {
+		return "", ErrNotCached
+	}
+
 	return
 }

@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"log"
@@ -108,11 +110,21 @@ func main() {
 	cache := setupCache()
 	proxy := wcache.NewReverseProxy(config, cache)
 	proxy.TargetURI = func(req *http.Request) (string, error) {
-		if target := req.URL.Query().Get("target"); len(target) == 0 {
-			return "", wcache.ErrNoContent
-		} else {
+		if target := req.URL.Query().Get("target"); len(target) != 0 {
 			return target, nil
 		}
+
+		return "", wcache.ErrNoContent
+	}
+
+	proxy.DigestRequest = func(req *http.Request) (string, error) {
+		digestBytes := wcache.DigestRequest(req, []string{"target"}, nil)
+		digest := base64.RawStdEncoding.EncodeToString(digestBytes)
+		return digest, nil
+	}
+
+	proxy.DecorateRequest = func(req *http.Request) {
+		req.Host = strings.Split(req.Host, ":")[0]
 	}
 
 	network, err := util.LookupEnv(ENV_SERVICE_NETWORK)

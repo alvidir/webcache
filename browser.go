@@ -4,6 +4,7 @@ import (
 	"context"
 	"io/ioutil"
 	"log"
+	"os"
 	"path"
 	"regexp"
 	"sync"
@@ -15,6 +16,7 @@ import (
 
 const (
 	DEFAULT_KEYWORD = "default"
+	DEFAULT_TMP_DIR = "/tmp/"
 )
 
 type CacheFile struct {
@@ -51,6 +53,7 @@ type File struct {
 
 // Browser represents a set of settings to apply over http requests and responses' cache
 type Browser struct {
+	TmpDir  string
 	regex   *regexp.Regexp
 	decoder util.Unmarshaler
 	files   sync.Map
@@ -81,12 +84,12 @@ func (browser *Browser) watch(ctx context.Context, w *fsnotify.Watcher) {
 			if event.Op&fsnotify.Create == fsnotify.Create ||
 				event.Op&fsnotify.Write == fsnotify.Write {
 
-				if err := browser.ReadFile(event.Name); err != nil {
+				if err := browser.ApplyFile(event.Name); err != nil {
 					log.Printf("%s: %s", event.Name, err.Error())
 				}
 
 			} else if event.Op&fsnotify.Remove == fsnotify.Remove {
-				browser.RemoveFile(event.Name)
+				browser.UnapplyFile(event.Name)
 			}
 
 		case err := <-w.Errors:
@@ -136,6 +139,14 @@ func (browser *Browser) findEndpointConfig(endpoint string) (config *eConfig, ex
 	return
 }
 
+func (browser *Browser) joinTmpPath(filename string) string {
+	if len(browser.TmpDir) == 0 {
+		return path.Join(DEFAULT_TMP_DIR, filename)
+	}
+
+	return path.Join(browser.TmpDir, filename)
+}
+
 func NewBrowser(regex string, decoder util.Unmarshaler) (*Browser, error) {
 	comp, err := regexp.Compile(regex)
 	if err != nil {
@@ -150,8 +161,8 @@ func NewBrowser(regex string, decoder util.Unmarshaler) (*Browser, error) {
 	return browser, err
 }
 
-// ReadFile reads the file located at the provided path p and stores its content
-func (browser *Browser) ReadFile(p string) (err error) {
+// ApplyFile reads the file located at the provided path p and stores its content
+func (browser *Browser) ApplyFile(p string) (err error) {
 	var f File
 	if err = util.YamlEncoder.Unmarshaler().Path(p, &f); err != nil {
 		return
@@ -163,8 +174,8 @@ func (browser *Browser) ReadFile(p string) (err error) {
 	return
 }
 
-// RemoveFile removes the configuration from the given file path p
-func (browser *Browser) RemoveFile(p string) {
+// UnapplyFile removes the configuration from the given file path p
+func (browser *Browser) UnapplyFile(p string) {
 	filename := path.Base(p)
 	browser.files.Delete(filename)
 	log.Printf("REMOVE_FILE %s successfully applied", p)
@@ -174,7 +185,7 @@ func (browser *Browser) RemoveFile(p string) {
 func (browser *Browser) ReadPath(p string) error {
 	files, err := ioutil.ReadDir(p)
 	if err != nil {
-		return browser.ReadFile(p)
+		return browser.ApplyFile(p)
 	}
 
 	for _, f := range files {
@@ -183,7 +194,7 @@ func (browser *Browser) ReadPath(p string) error {
 		}
 
 		fullpath := path.Join(p, f.Name())
-		if err := browser.ReadFile(fullpath); err != nil {
+		if err := browser.ApplyFile(fullpath); err != nil {
 			return err
 		}
 	}
@@ -300,4 +311,49 @@ func (browser *Browser) Headers(endpoint string, method string) map[string]strin
 	}
 
 	return headers
+}
+
+// CreateFile creates a new file at temporal directory
+func (browser *Browser) CreateFile(filename string) (*os.File, error) {
+	fullpath := browser.joinTmpPath(filename)
+	dir := path.Base(fullpath)
+
+	// Make sure the cache dir exists
+	err := os.MkdirAll(dir, 0764)
+	if err != nil {
+		log.Printf("TMP_DIR %s - %s", dir, err.Error())
+		return nil, err
+	}
+
+	// create file to cache response into.
+	file, err := os.Create(fullpath)
+	if err != nil {
+		file.Close()
+		log.Printf("CREATE_FILE %s - %s", fullpath, err.Error())
+		return nil, err
+	}
+
+	return file, nil
+}
+
+// ReadFile reads all the content of a file from temporal directory
+func (browser *Browser) ReadFile(filename string) ([]byte, error) {
+	dir := browser.joinTmpPath(filename)
+	content, err := ioutil.ReadFile(dir)
+	if err != nil {
+		log.Printf("REMOVE_FILE %s - %s", dir, err.Error())
+		return nil, err
+	}
+
+	return content, nil
+}
+
+// RemoveFile removes a file from temporal directory
+func (browser *Browser) RemoveFile(filename string) (err error) {
+	dir := browser.joinTmpPath(filename)
+	if err = os.Remove(dir); err != nil {
+		log.Printf("REMOVE_FILE %s - %s", dir, err.Error())
+	}
+
+	return
 }

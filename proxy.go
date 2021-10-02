@@ -2,12 +2,15 @@ package webcache
 
 import (
 	"crypto/md5"
+	"encoding/base64"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"os"
 	"sort"
 	"sync"
 	"time"
@@ -19,19 +22,23 @@ const (
 	CONCAT_SEPARATOR   = "::"
 )
 
-var (
-	ErrNotCached = fmt.Errorf("is not cached")
-	ErrNoContent = fmt.Errorf("has no content")
-)
-
 // A Cache represents an storage for request's responses
 type Cache interface {
 	Store(string, string, time.Duration) error
 	Load(string) (string, error)
 }
 
-// A Config represents a set of settings about how the ReverseProxy must perform
-type Config interface {
+// A FileManager represents an object that creates and removes files
+type FileManager interface {
+	CreateFile(string) (*os.File, error)
+	ReadFile(string) ([]byte, error)
+	RemoveFile(string) error
+}
+
+// A Manager represents a set of settings about how the ReverseProxy must perform
+type Manager interface {
+	FileManager
+
 	IsEndpointAllowed(string) bool
 	IsMethodAllowed(string, string) bool
 	IsMethodCached(string, string) bool
@@ -39,41 +46,12 @@ type Config interface {
 	Headers(string, string) map[string]string
 }
 
-type httpMiddleware struct {
-	body   []byte
-	header int
-	w      http.ResponseWriter
-}
-
-// implement http.ResponseWriter
-// https://golang.org/pkg/net/http/#ResponseWriter
-func (cacher *httpMiddleware) Header() http.Header {
-	return cacher.w.Header()
-}
-
-func (cacher *httpMiddleware) Write(b []byte) (int, error) {
-	cacher.body = append(cacher.body, b...)
-	return cacher.w.Write(b)
-}
-
-func (cacher *httpMiddleware) WriteHeader(i int) {
-	cacher.header = i
-	cacher.w.WriteHeader(i)
-}
-
-func newHttpMiddleware(w http.ResponseWriter) *httpMiddleware {
-	return &httpMiddleware{
-		body: make([]byte, 1024),
-		w:    w,
-	}
-}
-
 // DigestRequest returns the md5 of the given request rq taking as input parameters the request's method,
 // the exact host and path, all those listed query params and headers, and the body, if any
-func DigestRequest(rq *http.Request, params []string, headers []string) string {
+func DigestRequest(rq *http.Request, params []string, headers []string) []byte {
 	h := md5.New()
 	io.WriteString(h, rq.Method)
-	io.WriteString(h, rq.RequestURI)
+	io.WriteString(h, rq.Host)
 
 	sort.Strings(params)
 	for _, param := range params {
@@ -91,24 +69,25 @@ func DigestRequest(rq *http.Request, params []string, headers []string) string {
 		io.WriteString(h, string(body))
 	}
 
-	return string(h.Sum(nil))
+	return h.Sum(nil)
 }
 
 // A ReverseProxy is a cached reverse proxy that captures responses in order to provide it in the future instead of
 // permorming the request each time
 type ReverseProxy struct {
-	TargetURI     func(req *http.Request) (string, error)
-	DigestRequest func(req *http.Request) (string, error)
-	proxys        sync.Map
-	config        Config
-	cache         Cache
+	TargetURI       func(req *http.Request) (string, error)
+	DigestRequest   func(req *http.Request) (string, error)
+	DecorateRequest func(req *http.Request)
+	proxys          sync.Map
+	manager         Manager
+	cache           Cache
 }
 
 // NewReverseProxy returns a brand new ReverseProxy with the provided config and cache
-func NewReverseProxy(config Config, cache Cache) *ReverseProxy {
+func NewReverseProxy(manager Manager, cache Cache) *ReverseProxy {
 	reverse := &ReverseProxy{
-		config: config,
-		cache:  cache,
+		manager: manager,
+		cache:   cache,
 	}
 
 	return reverse
@@ -125,6 +104,7 @@ func (reverse *ReverseProxy) buildTag(host string, req *http.Request) (tag strin
 	}
 
 	tag = fmt.Sprintf("%s::%s::%s", req.Method, host, tag)
+	log.Printf("[%s] REQ_TAG %s - %s", req.Method, host, tag)
 	return
 }
 
@@ -148,26 +128,32 @@ func (reverse *ReverseProxy) getSingleHostReverseProxy(host string) (*httputil.R
 	return proxy, nil
 }
 
-func (reverse *ReverseProxy) getCachedResponseBody(host string, req *http.Request) (string, error) {
-	if !reverse.config.IsMethodCached(host, req.Method) {
+func (reverse *ReverseProxy) getCachedResponseBody(host string, req *http.Request) ([]byte, error) {
+	if !reverse.manager.IsMethodCached(host, req.Method) {
 		log.Printf("[%s] CACHE_MISS %s", req.Method, host)
-		return "", ErrNotCached
+		return nil, ErrNotCached
 	}
 
 	tag, err := reverse.buildTag(host, req)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	body, err := reverse.cache.Load(tag)
+	bodyStr, err := reverse.cache.Load(tag)
+	if err != nil && err != ErrNotCached {
+		log.Printf("[%s] CACHE_MISS %s - %s", req.Method, host, err.Error())
+		return nil, err
+	}
+
+	if len(bodyStr) == 0 {
+		log.Printf("[%s] CACHE_MISS %s", req.Method, host)
+		return nil, ErrNoContent
+	}
+
+	body, err := base64.RawStdEncoding.DecodeString(bodyStr)
 	if err != nil {
 		log.Printf("[%s] CACHE_MISS %s - %s", req.Method, host, err.Error())
-		return "", err
-	}
-
-	if len(body) == 0 {
-		log.Printf("[%s] CACHE_MISS %s", req.Method, host)
-		return "", ErrNoContent
+		return nil, err
 	}
 
 	log.Printf("[%s] CACHE_HIT %s", req.Method, host)
@@ -175,9 +161,33 @@ func (reverse *ReverseProxy) getCachedResponseBody(host string, req *http.Reques
 }
 
 func (reverse *ReverseProxy) includeCustomHeaders(host string, req *http.Request) {
-	for key, value := range reverse.config.Headers(host, req.Method) {
+	for key, value := range reverse.manager.Headers(host, req.Method) {
 		req.Header.Add(key, value)
 	}
+}
+
+func (reverse *ReverseProxy) storeFileContent(tag string, host string, file *os.File) {
+	content, err := ioutil.ReadAll(file)
+	if err != nil {
+		log.Printf("READ_FILE %s - %s", file.Name(), err.Error())
+		return
+	}
+
+	log.Printf("STROING: %s", content)
+	body := base64.RawStdEncoding.EncodeToString(content)
+	timeout := reverse.manager.ResponseLifetime(host)
+
+	if err := reverse.cache.Store(tag, body, timeout); err != nil {
+		log.Printf("CACHE_STORE %s - %s", tag, err.Error())
+	}
+}
+
+func (reverse *ReverseProxy) storeOnSuccess(middleware *HttpMiddleware, tag string, host string, file *os.File) {
+	if middleware.header >= HTTP_CODE_BOUNDARY {
+		return
+	}
+
+	reverse.storeFileContent(tag, host, file)
 }
 
 func (reverse *ReverseProxy) performHttpRequest(host string, w http.ResponseWriter, req *http.Request) error {
@@ -187,23 +197,30 @@ func (reverse *ReverseProxy) performHttpRequest(host string, w http.ResponseWrit
 		return err
 	}
 
+	proxy.ErrorLog = log.Default()
 	reverse.includeCustomHeaders(host, req)
-
-	middleware := newHttpMiddleware(w)
-	proxy.ServeHTTP(middleware, req)
-
-	if !reverse.config.IsMethodCached(host, req.Method) {
-		return nil
-	}
 
 	tag, err := reverse.buildTag(host, req)
 	if err != nil {
 		return nil
 	}
 
-	if middleware.header < HTTP_CODE_BOUNDARY {
-		timeout := reverse.config.ResponseLifetime(host)
-		reverse.cache.Store(tag, string(middleware.body), timeout)
+	if reverse.manager.IsMethodCached(host, req.Method) {
+		filename := base64.RawStdEncoding.EncodeToString([]byte(tag))
+		file, err := reverse.manager.CreateFile(filename)
+		if err != nil {
+			return err
+		}
+
+		//defer reverse.manager.RemoveFile(filename)
+		defer file.Close()
+
+		middleware := NewHttpMiddleware(w, file)
+		defer reverse.storeOnSuccess(middleware, tag, host, file)
+
+		proxy.ServeHTTP(middleware, req)
+	} else {
+		proxy.ServeHTTP(w, req)
 	}
 
 	return nil
@@ -223,16 +240,20 @@ func (reverse *ReverseProxy) ServeHTTP(w http.ResponseWriter, req *http.Request)
 		}
 	}
 
-	if !reverse.config.IsEndpointAllowed(host) {
+	if !reverse.manager.IsEndpointAllowed(host) {
 		w.WriteHeader(http.StatusForbidden)
 		w.Write([]byte("403: Host forbidden " + host))
 		return
 	}
 
-	if !reverse.config.IsMethodAllowed(host, req.Method) {
+	if !reverse.manager.IsMethodAllowed(host, req.Method) {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		w.Write([]byte("405: Method not allowed " + host))
 		return
+	}
+
+	if reverse.DecorateRequest != nil {
+		reverse.DecorateRequest(req)
 	}
 
 	if body, err := reverse.getCachedResponseBody(host, req); err == nil {
