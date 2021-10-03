@@ -17,8 +17,7 @@ import (
 
 const (
 	ETAG_SERVER_HEADER = "ETag"
-	HTTP_CODE_BOUNDARY = 400
-	CONCAT_SEPARATOR   = "::"
+	HTTP_CODE_BOUNDARY = 300
 )
 
 // A Cache represents an storage for request's responses
@@ -30,7 +29,7 @@ type Cache interface {
 // A FileManager represents an object that creates and removes files
 type FileManager interface {
 	CreateFile(string) (*os.File, error)
-	ReadFile(string) ([]byte, error)
+	ReadFile(*os.File) ([]byte, error)
 	RemoveFile(string) error
 }
 
@@ -74,12 +73,11 @@ func DigestRequest(rq *http.Request, params []string, headers []string) []byte {
 // A ReverseProxy is a cached reverse proxy that captures responses in order to provide it in the future instead of
 // permorming the request each time
 type ReverseProxy struct {
-	TargetURI       func(req *http.Request) (string, error)
-	DigestRequest   func(req *http.Request) (string, error)
-	DecorateRequest func(req *http.Request)
-	proxys          sync.Map
-	manager         Manager
-	cache           Cache
+	TargetURI     func(req *http.Request) (string, error)
+	DigestRequest func(req *http.Request) (string, error)
+	proxys        sync.Map
+	manager       Manager
+	cache         Cache
 }
 
 // NewReverseProxy returns a brand new ReverseProxy with the provided config and cache
@@ -103,7 +101,6 @@ func (reverse *ReverseProxy) buildTag(host string, req *http.Request) (tag strin
 	}
 
 	tag = fmt.Sprintf("%s::%s::%s", req.Method, host, tag)
-	log.Printf("[%s] REQ_TAG %s - %s", req.Method, host, tag)
 	return
 }
 
@@ -165,28 +162,32 @@ func (reverse *ReverseProxy) includeCustomHeaders(host string, req *http.Request
 	}
 }
 
-func (reverse *ReverseProxy) storeFileContent(filename string, tag string, host string) {
-	content, err := reverse.manager.ReadFile(filename)
+func (reverse *ReverseProxy) storeFileContent(file *os.File, host string) {
+	content, err := reverse.manager.ReadFile(file)
 	if err != nil {
-		log.Printf("READ_FILE %s - %s", filename, err.Error())
+		log.Printf("READ_FILE %s - %s", file.Name(), err.Error())
 		return
 	}
 
-	log.Printf("STROING: %s", content)
+	if len(content) == 0 {
+		log.Printf("READ_FILE %s - %s", file.Name(), ErrNoContent)
+		return
+	}
+
 	body := base64.RawStdEncoding.EncodeToString(content)
 	timeout := reverse.manager.ResponseLifetime(host)
 
-	if err := reverse.cache.Store(tag, body, timeout); err != nil {
-		log.Printf("CACHE_STORE %s - %s", tag, err.Error())
+	if err := reverse.cache.Store(file.Name(), body, timeout); err != nil {
+		log.Printf("CACHE_STORE %s - %s", file.Name(), err.Error())
 	}
 }
 
-func (reverse *ReverseProxy) storeOnSuccess(middleware *HttpMiddleware, filename string, tag string, host string) {
-	if middleware.header >= HTTP_CODE_BOUNDARY {
+func (reverse *ReverseProxy) onceCapturedRespose(middleware *HttpMiddleware, file *os.File, host string) {
+	if middleware.code >= HTTP_CODE_BOUNDARY {
 		return
 	}
 
-	reverse.storeFileContent(tag, host, filename)
+	reverse.storeFileContent(file, host)
 }
 
 func (reverse *ReverseProxy) performHttpRequest(host string, w http.ResponseWriter, req *http.Request) error {
@@ -211,11 +212,12 @@ func (reverse *ReverseProxy) performHttpRequest(host string, w http.ResponseWrit
 			return err
 		}
 
+		log.Printf("[%s] REQ_TAG %s - %s", req.Method, host, filename)
 		defer reverse.manager.RemoveFile(filename)
 		defer file.Close()
 
 		middleware := NewHttpMiddleware(w, file)
-		defer reverse.storeOnSuccess(middleware, filename, tag, host)
+		defer reverse.onceCapturedRespose(middleware, file, host)
 
 		proxy.ServeHTTP(middleware, req)
 	} else {
@@ -249,10 +251,6 @@ func (reverse *ReverseProxy) ServeHTTP(w http.ResponseWriter, req *http.Request)
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		w.Write([]byte("405: Method not allowed " + host))
 		return
-	}
-
-	if reverse.DecorateRequest != nil {
-		reverse.DecorateRequest(req)
 	}
 
 	if body, err := reverse.getCachedResponseBody(host, req); err == nil {

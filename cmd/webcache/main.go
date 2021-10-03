@@ -26,6 +26,7 @@ const (
 	ENV_CACHE_SIZE      = "CACHE_SIZE"
 	ENV_CACHE_TIMEOUT   = "CACHE_TIMEOUT"
 	DEFAULT_CONFIG_PATH = "/etc/webcache/"
+	TARGET_URI          = "target"
 	YAML_REGEX          = "^\\w*\\.(yaml|yml|YAML|YML)*$"
 )
 
@@ -110,7 +111,8 @@ func main() {
 	cache := setupCache()
 	proxy := wcache.NewReverseProxy(config, cache)
 	proxy.TargetURI = func(req *http.Request) (string, error) {
-		if target := req.URL.Query().Get("target"); len(target) != 0 {
+		if target := req.URL.Query().Get(TARGET_URI); len(target) != 0 {
+			req.Host = strings.Split(req.Host, ":")[0]
 			return target, nil
 		}
 
@@ -118,13 +120,9 @@ func main() {
 	}
 
 	proxy.DigestRequest = func(req *http.Request) (string, error) {
-		digestBytes := wcache.DigestRequest(req, []string{"target"}, nil)
+		digestBytes := wcache.DigestRequest(req, []string{TARGET_URI}, nil)
 		digest := base64.RawStdEncoding.EncodeToString(digestBytes)
 		return digest, nil
-	}
-
-	proxy.DecorateRequest = func(req *http.Request) {
-		req.Host = strings.Split(req.Host, ":")[0]
 	}
 
 	network, err := util.LookupEnv(ENV_SERVICE_NETWORK)

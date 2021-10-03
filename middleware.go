@@ -6,10 +6,11 @@ import (
 )
 
 type HttpMiddleware struct {
-	file   io.Writer
-	resp   http.ResponseWriter
-	multi  io.Writer
-	header int
+	file    io.Writer
+	resp    http.ResponseWriter
+	multi   io.Writer
+	headers http.Header
+	code    int
 }
 
 // implement http.ResponseWriter
@@ -23,16 +24,19 @@ func (w *HttpMiddleware) Write(b []byte) (int, error) {
 }
 
 func (w *HttpMiddleware) WriteHeader(i int) {
-	w.header = i
 	w.resp.WriteHeader(i)
+
+	w.code = i
+	w.headers = w.resp.Header()
 }
 
 func NewHttpMiddleware(resp http.ResponseWriter, file io.Writer) *HttpMiddleware {
-	multi := io.MultiWriter(file, resp)
+	multi := io.MultiWriter(resp, file)
 	return &HttpMiddleware{
-		file:   file,
-		resp:   resp,
-		multi:  multi,
-		header: 0,
+		file:    file,
+		resp:    resp,
+		multi:   multi,
+		headers: make(http.Header),
+		code:    0,
 	}
 }

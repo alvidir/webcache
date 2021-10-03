@@ -316,7 +316,7 @@ func (browser *Browser) Headers(endpoint string, method string) map[string]strin
 // CreateFile creates a new file at temporal directory
 func (browser *Browser) CreateFile(filename string) (*os.File, error) {
 	fullpath := browser.joinTmpPath(filename)
-	dir := path.Base(fullpath)
+	dir := path.Dir(fullpath)
 
 	// Make sure the cache dir exists
 	err := os.MkdirAll(dir, 0764)
@@ -337,11 +337,10 @@ func (browser *Browser) CreateFile(filename string) (*os.File, error) {
 }
 
 // ReadFile reads all the content of a file from temporal directory
-func (browser *Browser) ReadFile(filename string) ([]byte, error) {
-	dir := browser.joinTmpPath(filename)
-	content, err := ioutil.ReadFile(dir)
+func (browser *Browser) ReadFile(file *os.File) ([]byte, error) {
+	content, err := ioutil.ReadAll(file)
 	if err != nil {
-		log.Printf("REMOVE_FILE %s - %s", dir, err.Error())
+		log.Printf("READ_FILE %s - %s", file.Name(), err.Error())
 		return nil, err
 	}
 
