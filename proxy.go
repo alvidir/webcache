@@ -11,13 +11,16 @@ import (
 	"net/url"
 	"os"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 )
 
 const (
 	ETAG_SERVER_HEADER = "ETag"
-	HTTP_CODE_BOUNDARY = 300
+	LOCATION_HEADER    = "Location"
+	HTTP_CODE_BOUNDARY = 400
+	HTTP_CODE_REDIRECT = 300
 )
 
 // A Cache represents an storage for request's responses
@@ -90,13 +93,22 @@ func NewReverseProxy(manager Manager, cache Cache) *ReverseProxy {
 	return reverse
 }
 
-func (reverse *ReverseProxy) buildTag(host string, req *http.Request) (tag string, err error) {
+func (reverse *ReverseProxy) targetURI(req *http.Request) (host string, err error) {
+	host = req.Host
+	if reverse.TargetURI != nil {
+		host, err = reverse.TargetURI(req)
+	}
+
+	return
+}
+
+func (reverse *ReverseProxy) tag(host string, req *http.Request) (tag string, err error) {
 	tag = req.Header.Get(ETAG_SERVER_HEADER)
 	if reverse.DigestRequest != nil {
 		tag, err = reverse.DigestRequest(req)
 		if err != nil {
 			log.Printf("[%s] REQ_TAG %s - %s", req.Method, host, err.Error())
-			return "", err
+			return
 		}
 	}
 
@@ -130,7 +142,7 @@ func (reverse *ReverseProxy) getCachedResponseBody(host string, req *http.Reques
 		return nil, ErrNotCached
 	}
 
-	tag, err := reverse.buildTag(host, req)
+	tag, err := reverse.tag(host, req)
 	if err != nil {
 		return nil, err
 	}
@@ -162,35 +174,7 @@ func (reverse *ReverseProxy) includeCustomHeaders(host string, req *http.Request
 	}
 }
 
-func (reverse *ReverseProxy) storeFileContent(file *os.File, host string) {
-	content, err := reverse.manager.ReadFile(file)
-	if err != nil {
-		log.Printf("READ_FILE %s - %s", file.Name(), err.Error())
-		return
-	}
-
-	if len(content) == 0 {
-		log.Printf("READ_FILE %s - %s", file.Name(), ErrNoContent)
-		return
-	}
-
-	body := base64.RawStdEncoding.EncodeToString(content)
-	timeout := reverse.manager.ResponseLifetime(host)
-
-	if err := reverse.cache.Store(file.Name(), body, timeout); err != nil {
-		log.Printf("CACHE_STORE %s - %s", file.Name(), err.Error())
-	}
-}
-
-func (reverse *ReverseProxy) onceCapturedRespose(middleware *HttpMiddleware, file *os.File, host string) {
-	if middleware.code >= HTTP_CODE_BOUNDARY {
-		return
-	}
-
-	reverse.storeFileContent(file, host)
-}
-
-func (reverse *ReverseProxy) performHttpRequest(host string, w http.ResponseWriter, req *http.Request) error {
+func (reverse *ReverseProxy) performHttpRequest(w http.ResponseWriter, req *http.Request, host string) error {
 	proxy, err := reverse.getSingleHostReverseProxy(host)
 	if err != nil {
 		log.Printf("[%s] PROXY %s - %s", req.Method, host, err.Error())
@@ -200,45 +184,61 @@ func (reverse *ReverseProxy) performHttpRequest(host string, w http.ResponseWrit
 	proxy.ErrorLog = log.Default()
 	reverse.includeCustomHeaders(host, req)
 
-	tag, err := reverse.buildTag(host, req)
-	if err != nil {
+	if !reverse.manager.IsMethodCached(host, req.Method) {
+		proxy.ServeHTTP(w, req)
 		return nil
 	}
 
-	if reverse.manager.IsMethodCached(host, req.Method) {
-		filename := base64.RawStdEncoding.EncodeToString([]byte(tag))
-		file, err := reverse.manager.CreateFile(filename)
-		if err != nil {
-			return err
+	response := NewHttpResponse()
+	proxy.ServeHTTP(response, req)
+
+	if diff := response.code - HTTP_CODE_REDIRECT; 0 <= diff && diff < 100 {
+		// as HTTP_CODE_REDIRECT == 300, then diff is somewhere between 300 and 399
+		headers := response.Header()
+		if locations, exists := headers[LOCATION_HEADER]; !exists || len(locations) == 0 {
+			log.Printf("REDIRECT %s - %s http header must be set", host, LOCATION_HEADER)
+			return nil
+		} else if len(locations) > 1 {
+			log.Printf("REDIRECT %s - %s http header has too much values", host, LOCATION_HEADER)
+			return nil
 		}
 
-		log.Printf("[%s] REQ_TAG %s - %s", req.Method, host, filename)
-		defer reverse.manager.RemoveFile(filename)
-		defer file.Close()
+		location := headers[LOCATION_HEADER][0]
+		location = strings.Split(location, "?")[0]
 
-		middleware := NewHttpMiddleware(w, file)
-		defer reverse.onceCapturedRespose(middleware, file, host)
-
-		proxy.ServeHTTP(middleware, req)
-	} else {
-		proxy.ServeHTTP(w, req)
+		log.Printf("REDIRECT %s - has been moved to %s", host, location)
+		return reverse.performHttpRequest(w, req, location)
 	}
 
+	if response.code < HTTP_CODE_BOUNDARY {
+		go func() {
+			tag, err := reverse.tag(host, req)
+			if err != nil {
+				return
+			}
+
+			body := base64.RawStdEncoding.EncodeToString(response.body)
+			timeout := reverse.manager.ResponseLifetime(host)
+
+			if err := reverse.cache.Store(tag, body, timeout); err != nil {
+				log.Printf("CACHE_STORE %s - %s", tag, err.Error())
+			}
+		}()
+	}
+
+	response.Echo(w)
 	return nil
 }
 
 // ServeHTTP performs http requests if not cached yet or returns the chaced body instead
 func (reverse *ReverseProxy) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	host := req.Host
-	if reverse.TargetURI != nil {
-		var err error
-		if host, err = reverse.TargetURI(req); err != nil {
-			log.Printf("TARGET_URI %s", err)
+	host, err := reverse.targetURI(req)
+	if err != nil {
+		log.Printf("TARGET_URI %s", err)
 
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("400: Bad request"))
-			return
-		}
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("400: Bad request"))
+		return
 	}
 
 	if !reverse.manager.IsEndpointAllowed(host) {
@@ -262,7 +262,7 @@ func (reverse *ReverseProxy) ServeHTTP(w http.ResponseWriter, req *http.Request)
 		return
 	}
 
-	if err := reverse.performHttpRequest(host, w, req); err != nil {
+	if err := reverse.performHttpRequest(w, req, host); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("500: Internal server error"))
 	}
