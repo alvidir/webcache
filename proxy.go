@@ -2,7 +2,6 @@ package webcache
 
 import (
 	"crypto/md5"
-	"encoding/base64"
 	"fmt"
 	"io"
 	"log"
@@ -25,8 +24,8 @@ const (
 
 // A Cache represents an storage for request's responses
 type Cache interface {
-	Store(string, string, time.Duration) error
-	Load(string) (string, error)
+	Store(string, interface{}, time.Duration) error
+	Load(string) (interface{}, error)
 }
 
 // A FileManager represents an object that creates and removes files
@@ -136,7 +135,7 @@ func (reverse *ReverseProxy) getSingleHostReverseProxy(host string) (*httputil.R
 	return proxy, nil
 }
 
-func (reverse *ReverseProxy) getCachedResponseBody(host string, req *http.Request) ([]byte, error) {
+func (reverse *ReverseProxy) getCachedResponseBody(host string, req *http.Request) (*HttpResponse, error) {
 	if !reverse.manager.IsMethodCached(host, req.Method) {
 		log.Printf("[%s] CACHE_MISS %s", req.Method, host)
 		return nil, ErrNotCached
@@ -147,25 +146,19 @@ func (reverse *ReverseProxy) getCachedResponseBody(host string, req *http.Reques
 		return nil, err
 	}
 
-	bodyStr, err := reverse.cache.Load(tag)
+	v, err := reverse.cache.Load(tag)
 	if err != nil && err != ErrNotCached {
 		log.Printf("[%s] CACHE_MISS %s - %s", req.Method, host, err.Error())
 		return nil, err
 	}
 
-	if len(bodyStr) == 0 {
-		log.Printf("[%s] CACHE_MISS %s", req.Method, host)
-		return nil, ErrNoContent
-	}
-
-	body, err := base64.RawStdEncoding.DecodeString(bodyStr)
-	if err != nil {
-		log.Printf("[%s] CACHE_MISS %s - %s", req.Method, host, err.Error())
+	if response, ok := v.(HttpResponse); !ok {
+		log.Printf("[%s] CACHE_MISS %s - %s", req.Method, host, "is not an HttpResponse")
 		return nil, err
+	} else {
+		log.Printf("[%s] CACHE_HIT %s", req.Method, host)
+		return &response, nil
 	}
-
-	log.Printf("[%s] CACHE_HIT %s", req.Method, host)
-	return body, nil
 }
 
 func (reverse *ReverseProxy) includeCustomHeaders(host string, req *http.Request) {
@@ -190,7 +183,7 @@ func (reverse *ReverseProxy) performHttpRequest(w http.ResponseWriter, req *http
 	}
 
 	response := NewHttpResponse()
-	proxy.ServeHTTP(response, req)
+	proxy.ServeHTTP(&response, req)
 
 	if diff := response.code - HTTP_CODE_REDIRECT; 0 <= diff && diff < 100 {
 		// as HTTP_CODE_REDIRECT == 300, then diff is somewhere between 300 and 399
@@ -205,6 +198,11 @@ func (reverse *ReverseProxy) performHttpRequest(w http.ResponseWriter, req *http
 
 		location := headers[LOCATION_HEADER][0]
 		location = strings.Split(location, "?")[0]
+		if location == host {
+			log.Printf("REDIRECT %s - cyclical redirection to itself", host)
+			response.Echo(w)
+			return nil
+		}
 
 		log.Printf("REDIRECT %s - has been moved to %s", host, location)
 		return reverse.performHttpRequest(w, req, location)
@@ -217,10 +215,8 @@ func (reverse *ReverseProxy) performHttpRequest(w http.ResponseWriter, req *http
 				return
 			}
 
-			body := base64.RawStdEncoding.EncodeToString(response.body)
 			timeout := reverse.manager.ResponseLifetime(host)
-
-			if err := reverse.cache.Store(tag, body, timeout); err != nil {
+			if err := reverse.cache.Store(tag, response, timeout); err != nil {
 				log.Printf("CACHE_STORE %s - %s", tag, err.Error())
 			}
 		}()
@@ -253,8 +249,8 @@ func (reverse *ReverseProxy) ServeHTTP(w http.ResponseWriter, req *http.Request)
 		return
 	}
 
-	if body, err := reverse.getCachedResponseBody(host, req); err == nil {
-		w.Write([]byte(body))
+	if resp, err := reverse.getCachedResponseBody(host, req); err == nil {
+		resp.Echo(w)
 		return
 	} else if err != ErrNotCached && err != ErrNoContent {
 		w.WriteHeader(http.StatusInternalServerError)

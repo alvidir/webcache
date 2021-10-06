@@ -37,7 +37,7 @@ func NewRedisCache(addr string, size int, ttl time.Duration) (*RedisCache, error
 }
 
 // Store stores a value under a given key with a lifetime of ttl duration so far
-func (c *RedisCache) Store(key, value string, ttl time.Duration) error {
+func (c *RedisCache) Store(key string, value interface{}, ttl time.Duration) error {
 	ctx := context.Background()
 	return c.cache.Set(&cache.Item{
 		Ctx:   ctx,
@@ -48,7 +48,7 @@ func (c *RedisCache) Store(key, value string, ttl time.Duration) error {
 }
 
 // Load returns the value for a given key, if any, otherwise err != nil
-func (c *RedisCache) Load(key string) (value string, err error) {
+func (c *RedisCache) Load(key string) (value interface{}, err error) {
 	ctx := context.Background()
 	if err = c.cache.Get(ctx, key, &value); err == cache.ErrCacheMiss {
 		return "", ErrNotCached

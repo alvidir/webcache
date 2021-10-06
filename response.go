@@ -36,8 +36,8 @@ func (r *HttpResponse) Echo(w http.ResponseWriter) {
 	w.Write(r.body)
 }
 
-func NewHttpResponse() *HttpResponse {
-	return &HttpResponse{
+func NewHttpResponse() HttpResponse {
+	return HttpResponse{
 		body:    []byte{},
 		headers: make(http.Header),
 		code:    0,
