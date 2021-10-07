@@ -16,10 +16,10 @@ import (
 )
 
 const (
-	ETAG_SERVER_HEADER = "ETag"
-	LOCATION_HEADER    = "Location"
-	HTTP_CODE_BOUNDARY = 400
-	HTTP_CODE_REDIRECT = 300
+	ETAG_SERVER_HEADER   = "ETag"
+	HTTP_LOCATION_HEADER = "Location"
+	HTTP_CODE_BOUNDARY   = 400
+	HTTP_CODE_REDIRECT   = 300
 )
 
 // A Cache represents an storage for request's responses
@@ -48,16 +48,11 @@ type Manager interface {
 
 // DigestRequest returns the md5 of the given request rq taking as input parameters the request's method,
 // the exact host and path, all those listed query params and headers, and the body, if any
-func DigestRequest(rq *http.Request, params []string, headers []string) []byte {
+func DigestRequest(rq *http.Request, headers []string) []byte {
 	h := md5.New()
 	io.WriteString(h, rq.Method)
 	io.WriteString(h, rq.Host)
-
-	sort.Strings(params)
-	for _, param := range params {
-		label := fmt.Sprintf("%s%s", param, rq.URL.Query().Get(param))
-		io.WriteString(h, label)
-	}
+	io.WriteString(h, rq.URL.Query().Encode())
 
 	sort.Strings(headers)
 	for _, header := range headers {
@@ -74,15 +69,19 @@ func DigestRequest(rq *http.Request, params []string, headers []string) []byte {
 
 // FormatHttpRequest returns and string descriving the content of an HttpRequest
 func FormatHttpRequest(req *http.Request) (format string) {
-	format = fmt.Sprintf("%s %s\n", req.Method, req.URL)
+	format = fmt.Sprintf("%s %s\n\n", req.Method, req.URL)
 	for header, values := range req.Header {
 		format += fmt.Sprintf("%s: %s\n", header, strings.Join(values, ", "))
 	}
 
+	if req.Body == nil {
+		return
+	}
+
 	if bytes, err := io.ReadAll(req.Body); err != nil {
-		format += fmt.Sprintf("BODY_ERROR %s\n", err.Error())
-	} else {
-		format += fmt.Sprintf("%s\n", string(bytes))
+		format += fmt.Sprintf("\nBODY_ERROR %s\n", err.Error())
+	} else if len(bytes) > 0 {
+		format += fmt.Sprintf("BODY %s\n", string(bytes))
 	}
 
 	return
@@ -91,7 +90,6 @@ func FormatHttpRequest(req *http.Request) (format string) {
 // A ReverseProxy is a cached reverse proxy that captures responses in order to provide it in the future instead of
 // permorming the request each time
 type ReverseProxy struct {
-	TargetURI     func(req *http.Request) (string, error)
 	DigestRequest func(req *http.Request) (string, error)
 	proxys        sync.Map
 	manager       Manager
@@ -109,12 +107,11 @@ func NewReverseProxy(manager Manager, cache Cache) *ReverseProxy {
 }
 
 func (reverse *ReverseProxy) targetURI(req *http.Request) (host string, err error) {
-	host = req.Host
-	if reverse.TargetURI != nil {
-		host, err = reverse.TargetURI(req)
+	if targets, ok := req.Header[HTTP_LOCATION_HEADER]; ok && len(targets) > 0 {
+		return targets[0], nil
 	}
 
-	return
+	return "", ErrNoContent
 }
 
 func (reverse *ReverseProxy) tag(host string, req *http.Request) (tag string, err error) {
@@ -149,11 +146,12 @@ func (reverse *ReverseProxy) getSingleHostReverseProxy(host string) (*httputil.R
 	proxy := httputil.NewSingleHostReverseProxy(remoteUrl)
 	proxy.Director = func(req *http.Request) {
 		req.Header.Add("X-Forwarded-Host", req.Host)
-		req.Header.Add("X-Origin-Host", remoteUrl.Host)
+		req.Header.Add("X-Target-Host", remoteUrl.Host)
 		req.URL.Scheme = "http"
 		req.URL.Host = remoteUrl.Host
 
-		log.Println(FormatHttpRequest(req))
+		delete(req.Header, HTTP_LOCATION_HEADER)
+		log.Printf("REQUEST\n%s\n", FormatHttpRequest(req))
 	}
 
 	reverse.proxys.Store(host, proxy)
@@ -174,7 +172,7 @@ func (reverse *ReverseProxy) getCachedResponseBody(host string, req *http.Reques
 	v, err := reverse.cache.Load(tag)
 	if err != nil && err != ErrNotCached {
 		log.Printf("[%s] CACHE_MISS %s - %s", req.Method, host, err.Error())
-		return nil, err
+		return nil, ErrNotCached
 	}
 
 	if response, ok := v.(HttpResponse); !ok {
@@ -208,22 +206,22 @@ func (reverse *ReverseProxy) performHttpRequest(w http.ResponseWriter, req *http
 	}
 
 	response := NewHttpResponse()
-	proxy.ServeHTTP(&response, req)
+	proxy.ServeHTTP(response, req)
 
-	log.Println(response.Format())
+	log.Printf("RESPONSE\n%s\n", response.Format())
 
 	if diff := response.code - HTTP_CODE_REDIRECT; 0 <= diff && diff < 100 {
 		// as HTTP_CODE_REDIRECT == 300, then diff is somewhere between 300 and 399
 		headers := response.Header()
-		if locations, exists := headers[LOCATION_HEADER]; !exists || len(locations) == 0 {
-			log.Printf("REDIRECT %s - %s http header must be set", host, LOCATION_HEADER)
+		if locations, exists := headers[HTTP_LOCATION_HEADER]; !exists || len(locations) == 0 {
+			log.Printf("REDIRECT %s - %s http header must be set", host, HTTP_LOCATION_HEADER)
 			return nil
 		} else if len(locations) > 1 {
-			log.Printf("REDIRECT %s - %s http header has too much values", host, LOCATION_HEADER)
+			log.Printf("REDIRECT %s - %s http header has too much values", host, HTTP_LOCATION_HEADER)
 			return nil
 		}
 
-		location := headers[LOCATION_HEADER][0]
+		location := headers[HTTP_LOCATION_HEADER][0]
 		location = strings.Split(location, "?")[0]
 		if location == host {
 			log.Printf("REDIRECT %s - cyclical redirection to itself", host)

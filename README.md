@@ -24,20 +24,20 @@ request:
       cached: false # do not catch any DELETE response
 
   headers: # global headers for any endpoint listed in this file
-    XXX_GLOBAL_HEADER: global_header
+    X_GLOBAL_HEADER: global_header
 
 router:
   - endpoints: # afected endpoints for the current configuration (regex)
-      - https?://(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,32}/?$
+      - https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,32}\/?$
 
     headers: # custom headers for the endpoints above
-      XXX_A_CUSTOM_HEADER: header_value
-      XXX_ANOTHER_HEADER: another_value
+      X_A_CUSTOM_HEADER: header_value
+      X_ANOTHER_HEADER: another_value
 
     methods: # methods configuration for the endpoints above
       - name: GET
         headers: # custom headers for GET requests
-          XXX_JUST_IN_GET_HEADER: get_header_value
+          X_JUST_IN_GET_HEADER: get_header_value
       - name: POST
         enabled: false # block all POST requests (405 - method not allowed)
       - name: PUT

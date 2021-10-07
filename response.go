@@ -48,8 +48,8 @@ func (r *HttpResponse) Format() (format string) {
 	return
 }
 
-func NewHttpResponse() HttpResponse {
-	return HttpResponse{
+func NewHttpResponse() *HttpResponse {
+	return &HttpResponse{
 		body:    []byte{},
 		headers: make(http.Header),
 		code:    0,
