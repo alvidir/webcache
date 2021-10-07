@@ -72,6 +72,22 @@ func DigestRequest(rq *http.Request, params []string, headers []string) []byte {
 	return h.Sum(nil)
 }
 
+// FormatHttpRequest returns and string descriving the content of an HttpRequest
+func FormatHttpRequest(req *http.Request) (format string) {
+	format = fmt.Sprintf("%s %s\n", req.Method, req.URL)
+	for header, values := range req.Header {
+		format += fmt.Sprintf("%s: %s\n", header, strings.Join(values, ", "))
+	}
+
+	if bytes, err := io.ReadAll(req.Body); err != nil {
+		format += fmt.Sprintf("BODY_ERROR %s\n", err.Error())
+	} else {
+		format += fmt.Sprintf("%s\n", string(bytes))
+	}
+
+	return
+}
+
 // A ReverseProxy is a cached reverse proxy that captures responses in order to provide it in the future instead of
 // permorming the request each time
 type ReverseProxy struct {
@@ -131,6 +147,15 @@ func (reverse *ReverseProxy) getSingleHostReverseProxy(host string) (*httputil.R
 	}
 
 	proxy := httputil.NewSingleHostReverseProxy(remoteUrl)
+	proxy.Director = func(req *http.Request) {
+		req.Header.Add("X-Forwarded-Host", req.Host)
+		req.Header.Add("X-Origin-Host", remoteUrl.Host)
+		req.URL.Scheme = "http"
+		req.URL.Host = remoteUrl.Host
+
+		log.Println(FormatHttpRequest(req))
+	}
+
 	reverse.proxys.Store(host, proxy)
 	return proxy, nil
 }
@@ -184,6 +209,8 @@ func (reverse *ReverseProxy) performHttpRequest(w http.ResponseWriter, req *http
 
 	response := NewHttpResponse()
 	proxy.ServeHTTP(&response, req)
+
+	log.Println(response.Format())
 
 	if diff := response.code - HTTP_CODE_REDIRECT; 0 <= diff && diff < 100 {
 		// as HTTP_CODE_REDIRECT == 300, then diff is somewhere between 300 and 399

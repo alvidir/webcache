@@ -38,13 +38,14 @@ func (r *HttpResponse) Echo(w http.ResponseWriter) {
 	w.Write(r.body)
 }
 
-func (r *HttpResponse) Cat() {
-	fmt.Printf("HTTP %v", r.code)
+func (r *HttpResponse) Format() (format string) {
+	format = fmt.Sprintf("HTTP %v\n", r.code)
 	for header, values := range r.headers {
-		fmt.Printf("%s: %s", header, strings.Join(values, ", "))
+		format += fmt.Sprintf("%s: %s\n", header, strings.Join(values, ", "))
 	}
 
-	fmt.Printf("\n %s", string(r.body))
+	format += fmt.Sprintf("\n%s\n", string(r.body))
+	return
 }
 
 func NewHttpResponse() HttpResponse {
