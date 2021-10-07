@@ -1,7 +1,9 @@
 package webcache
 
 import (
+	"fmt"
 	"net/http"
+	"strings"
 )
 
 type HttpResponse struct {
@@ -34,6 +36,15 @@ func (r *HttpResponse) Echo(w http.ResponseWriter) {
 
 	w.WriteHeader(r.code)
 	w.Write(r.body)
+}
+
+func (r *HttpResponse) Cat() {
+	fmt.Printf("HTTP %v", r.code)
+	for header, values := range r.headers {
+		fmt.Printf("%s: %s", header, strings.Join(values, ", "))
+	}
+
+	fmt.Printf("\n %s", string(r.body))
 }
 
 func NewHttpResponse() HttpResponse {
