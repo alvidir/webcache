@@ -47,3 +47,24 @@ router:
 ```
 
 > The webcache's configuration is static by default, meaning that once a config file is applied, any update on it will take no effect over webcache's configuration. To enable event's watching for any config file or directory, the environment variable `WATCH_CONFIG` must be set as _True_. 
+
+# Environment variables
+
+The application requires a set of environment variables that describes how the service must perform. These environment variables are those listed down below:
+
+``` bash
+# Service endpoint and network
+SERVICE_ADDR=:8000
+SERVICE_NETWORK=tcp
+
+# Configuration path 
+CONFIG_PATH=.config/
+WATCH_CONFIG=True
+
+# Redis endpoint
+REDIS_ADDR=localhost:6379
+
+# In-memory cache configuration 
+CACHE_SIZE=1024 # how many entries the cache can have
+CACHE_TIMEOUT=10s # for how long an entry is stored in the cache
+```
