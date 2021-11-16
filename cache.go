@@ -2,6 +2,7 @@ package webcache
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -50,7 +51,7 @@ func (c *RedisCache) Store(key string, value interface{}, ttl time.Duration) err
 // Load returns the value for a given key, if any, otherwise err != nil
 func (c *RedisCache) Load(key string, value interface{}) (err error) {
 	ctx := context.Background()
-	if err = c.cache.Get(ctx, key, value); err == cache.ErrCacheMiss {
+	if err = c.cache.Get(ctx, key, value); errors.Is(err, cache.ErrCacheMiss) {
 		return ErrNotCached
 	}
 

@@ -17,25 +17,25 @@ import (
 )
 
 const (
-	ENV_SERVICE_ADDR    = "SERVICE_ADDR"
-	ENV_SERVICE_NETWORK = "SERVICE_NETWORK"
-	ENV_CONFIG_PATH     = "CONFIG_PATH"
-	ENV_WATCH_CONFIG    = "WATCH_CONFIG"
-	ENV_REDIS_ADDR      = "REDIS_ADDR"
-	ENV_CACHE_SIZE      = "CACHE_SIZE"
-	ENV_CACHE_TIMEOUT   = "CACHE_TIMEOUT"
-	DEFAULT_CONFIG_PATH = "/etc/webcache/"
-	YAML_REGEX          = "^\\w*\\.(yaml|yml|YAML|YML)*$"
+	EnvServiceAddr    = "SERVICE_ADDR"
+	EnvServiceNetw    = "SERVICE_NETW"
+	EnvConfigPath     = "CONFIG_PATH"
+	EnvWatchConfig    = "WATCH_CONFIG"
+	EnvRedisAddr      = "REDIS_ADDR"
+	EnvCacheSize      = "CACHE_SIZE"
+	EnvCacheTimeout   = "CACHE_TIMEOUT"
+	DefaultConfigPath = "/etc/webcache/"
+	YamlRegex         = "^\\w*\\.(yaml|yml|YAML|YML)*$"
 )
 
 func setupBrowser(ctx context.Context) *wcache.Browser {
-	configPath := DEFAULT_CONFIG_PATH
-	if path, err := util.LookupEnv(ENV_CONFIG_PATH); err == nil {
+	configPath := DefaultConfigPath
+	if path, err := util.LookupEnv(EnvConfigPath); err == nil {
 		configPath = path
 	}
 
 	decoder := util.YamlEncoder.Unmarshaler()
-	browser, err := wcache.NewBrowser(YAML_REGEX, decoder)
+	browser, err := wcache.NewBrowser(YamlRegex, decoder)
 	if err != nil {
 		log.Fatalf("browser setup has failed: %s", err)
 	}
@@ -44,7 +44,7 @@ func setupBrowser(ctx context.Context) *wcache.Browser {
 		log.Fatalf("read path has failed: %s", err)
 	}
 
-	value, err := util.LookupEnv(ENV_WATCH_CONFIG)
+	value, err := util.LookupEnv(EnvWatchConfig)
 	if err != nil {
 		return browser
 	}
@@ -64,29 +64,29 @@ func setupBrowser(ctx context.Context) *wcache.Browser {
 }
 
 func setupCache() *wcache.RedisCache {
-	addr, err := util.LookupEnv(ENV_REDIS_ADDR)
+	addr, err := util.LookupEnv(EnvRedisAddr)
 	if err != nil {
-		log.Fatalf("%s: %s", ENV_REDIS_ADDR, err)
+		log.Fatalf("%s: %s", EnvRedisAddr, err)
 	}
 
-	sizeStr, err := util.LookupEnv(ENV_CACHE_SIZE)
+	sizeStr, err := util.LookupEnv(EnvCacheSize)
 	if err != nil {
-		log.Fatalf("%s: %s", ENV_CACHE_SIZE, err)
+		log.Fatalf("%s: %s", EnvCacheSize, err)
 	}
 
 	size, err := strconv.ParseInt(sizeStr, 0, 0)
 	if err != nil {
-		log.Fatalf("%s: %s", ENV_CACHE_SIZE, err)
+		log.Fatalf("%s: %s", EnvCacheSize, err)
 	}
 
-	timeoutStr, err := util.LookupEnv(ENV_CACHE_TIMEOUT)
+	timeoutStr, err := util.LookupEnv(EnvCacheTimeout)
 	if err != nil {
-		log.Fatalf("%s: %s", ENV_CACHE_TIMEOUT, err)
+		log.Fatalf("%s: %s", EnvCacheTimeout, err)
 	}
 
 	timeout, err := time.ParseDuration(timeoutStr)
 	if err != nil {
-		log.Fatalf("%s: %s", ENV_CACHE_TIMEOUT, err)
+		log.Fatalf("%s: %s", EnvCacheTimeout, err)
 	}
 
 	cache, err := wcache.NewRedisCache(addr, int(size), timeout)
@@ -115,14 +115,14 @@ func main() {
 		return digest, nil
 	}
 
-	network, err := util.LookupEnv(ENV_SERVICE_NETWORK)
+	network, err := util.LookupEnv(EnvServiceNetw)
 	if err != nil {
-		log.Fatalf("%s: %s", ENV_SERVICE_NETWORK, err)
+		log.Fatalf("%s: %s", EnvServiceNetw, err)
 	}
 
-	address, err := util.LookupEnv(ENV_SERVICE_ADDR)
+	address, err := util.LookupEnv(EnvServiceAddr)
 	if err != nil {
-		log.Fatalf("%s: %s", ENV_SERVICE_ADDR, err)
+		log.Fatalf("%s: %s", EnvServiceAddr, err)
 	}
 
 	lis, err := net.Listen(network, address)
