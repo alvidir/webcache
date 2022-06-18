@@ -1,95 +1,99 @@
 package main
 
 import (
-	"context"
 	"encoding/base64"
 	"net"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
 	"log"
 
-	util "github.com/alvidir/go-util"
 	wcache "github.com/alvidir/webcache"
+	"go.uber.org/zap"
 
 	"github.com/joho/godotenv"
 )
 
 const (
-	EnvServiceAddr    = "SERVICE_ADDR"
-	EnvServiceNetw    = "SERVICE_NETW"
-	EnvConfigPath     = "CONFIG_PATH"
-	EnvWatchConfig    = "WATCH_CONFIG"
-	EnvRedisAddr      = "REDIS_ADDR"
-	EnvCacheSize      = "CACHE_SIZE"
-	EnvCacheTimeout   = "CACHE_TIMEOUT"
-	DefaultConfigPath = "/etc/webcache/"
-	YamlRegex         = "^\\w*\\.(yaml|yml|YAML|YML)*$"
+	ENV_SERVICE_ADDR = "SERVICE_ADDR"
+	ENV_SERVICE_NETW = "SERVICE_NETW"
+	ENV_CONFIG_PATH  = "CONFIG_PATH"
+	ENV_REDIS_ADDR   = "REDIS_ADDR"
+	ENV_CACHE_TTL    = "CACHE_TTL"
+	ENV_CACHE_SIZE   = "CACHE_SIZE"
+	YAML_REGEX       = "^\\w*\\.(yaml|yml|YAML|YML)*$"
 )
 
-func setupBrowser(ctx context.Context) *wcache.Browser {
-	configPath := DefaultConfigPath
-	if path, err := util.LookupEnv(EnvConfigPath); err == nil {
-		configPath = path
+var (
+	serviceAddr = "0.0.0.0:8000"
+	serviceNetw = "tcp"
+	configPath  = "/etc/webcache/"
+	cache_ttl   = 10 * time.Minute
+	cache_size  = 128
+)
+
+// func setupBrowser(ctx context.Context) *wcache.Browser {
+// 	if path, exists := os.LookupEnv(ENV_CONFIG_PATH); exists {
+// 		configPath = path
+// 	}
+
+// 	browser, err := wcache.NewBrowser(YAML_REGEX, decoder)
+// 	if err != nil {
+// 		log.Fatalf("browser setup has failed: %s", err)
+// 	}
+
+// 	if err := browser.ReadPath(configPath); err != nil {
+// 		log.Fatalf("read path has failed: %s", err)
+// 	}
+
+// 	value, err := util.LookupEnv(EnvWatchConfig)
+// 	if err != nil {
+// 		return browser
+// 	}
+
+// 	watch, err := strconv.ParseBool(value)
+// 	if err != nil {
+// 		return browser
+// 	}
+
+// 	if watch {
+// 		if err := browser.WatchPath(ctx, configPath); err != nil {
+// 			log.Fatalf("watch path has failed: %s", err)
+// 		}
+// 	}
+
+// 	return browser
+// }
+
+func setupCache(logger *zap.Logger) *wcache.RedisCache {
+	addr, exists := os.LookupEnv(ENV_REDIS_ADDR)
+	if !exists {
+		logger.Fatal("redis dsn must be set")
 	}
 
-	decoder := util.YamlEncoder.Unmarshaler()
-	browser, err := wcache.NewBrowser(YamlRegex, decoder)
-	if err != nil {
-		log.Fatalf("browser setup has failed: %s", err)
-	}
-
-	if err := browser.ReadPath(configPath); err != nil {
-		log.Fatalf("read path has failed: %s", err)
-	}
-
-	value, err := util.LookupEnv(EnvWatchConfig)
-	if err != nil {
-		return browser
-	}
-
-	watch, err := strconv.ParseBool(value)
-	if err != nil {
-		return browser
-	}
-
-	if watch {
-		if err := browser.WatchPath(ctx, configPath); err != nil {
-			log.Fatalf("watch path has failed: %s", err)
+	if value, exists := os.LookupEnv(ENV_CACHE_TTL); exists {
+		if ttl, err := time.ParseDuration(value); err != nil {
+			logger.Fatal("invalid cache ttl",
+				zap.String("value", value),
+				zap.Error(err))
+		} else {
+			cache_ttl = ttl
 		}
 	}
 
-	return browser
-}
-
-func setupCache() *wcache.RedisCache {
-	addr, err := util.LookupEnv(EnvRedisAddr)
-	if err != nil {
-		log.Fatalf("%s: %s", EnvRedisAddr, err)
+	if value, exists := os.LookupEnv(ENV_CACHE_SIZE); exists {
+		if size, err := strconv.Atoi(value); err != nil {
+			logger.Fatal("invalid cache size",
+				zap.String("value", value),
+				zap.Error(err))
+		} else {
+			cache_size = size
+		}
 	}
 
-	sizeStr, err := util.LookupEnv(EnvCacheSize)
-	if err != nil {
-		log.Fatalf("%s: %s", EnvCacheSize, err)
-	}
-
-	size, err := strconv.ParseInt(sizeStr, 0, 0)
-	if err != nil {
-		log.Fatalf("%s: %s", EnvCacheSize, err)
-	}
-
-	timeoutStr, err := util.LookupEnv(EnvCacheTimeout)
-	if err != nil {
-		log.Fatalf("%s: %s", EnvCacheTimeout, err)
-	}
-
-	timeout, err := time.ParseDuration(timeoutStr)
-	if err != nil {
-		log.Fatalf("%s: %s", EnvCacheTimeout, err)
-	}
-
-	cache, err := wcache.NewRedisCache(addr, int(size), timeout)
+	cache, err := wcache.NewRedisCache(addr, cache_size, cache_ttl)
 	if err != nil {
 		log.Fatalf("cache setup has failed: %s", err)
 	}
@@ -98,14 +102,17 @@ func setupCache() *wcache.RedisCache {
 }
 
 func main() {
+	logger, _ := zap.NewProduction()
+	defer logger.Sync()
+
 	if err := godotenv.Load(); err != nil {
-		log.Printf("no dotenv file has been found")
+		logger.Warn("no dotenv file has been found",
+			zap.Error(err))
 	}
 
-	ctx, cancel := context.WithCancel(context.TODO())
-	defer cancel()
+	//ctx := context.Background()
 
-	config := setupBrowser(ctx)
+	//config := setupBrowser(ctx)
 	cache := setupCache()
 	proxy := wcache.NewReverseProxy(config, cache)
 
@@ -115,23 +122,24 @@ func main() {
 		return digest, nil
 	}
 
-	network, err := util.LookupEnv(EnvServiceNetw)
-	if err != nil {
-		log.Fatalf("%s: %s", EnvServiceNetw, err)
+	if addr, exists := os.LookupEnv(ENV_SERVICE_ADDR); exists {
+		serviceAddr = addr
 	}
 
-	address, err := util.LookupEnv(EnvServiceAddr)
-	if err != nil {
-		log.Fatalf("%s: %s", EnvServiceAddr, err)
+	if netw, exists := os.LookupEnv(ENV_SERVICE_NETW); exists {
+		serviceNetw = netw
 	}
 
-	lis, err := net.Listen(network, address)
+	lis, err := net.Listen(serviceNetw, serviceAddr)
 	if err != nil {
-		log.Fatal(err)
+		logger.Panic("failed to listen: %v",
+			zap.Error(err))
 	}
+
+	logger.Info("server ready to accept connections",
+		zap.String("address", serviceAddr))
 
 	http.HandleFunc("/", proxy.ServeHTTP)
-	log.Printf("server listening on %s", address)
 	if err := http.Serve(lis, nil); err != nil {
 		log.Fatalf("server abruptly terminated: %s", err.Error())
 	}

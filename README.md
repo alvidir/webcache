@@ -59,7 +59,6 @@ SERVICE_NETWORK=tcp
 
 # Configuration path 
 CONFIG_PATH=.config/
-WATCH_CONFIG=True
 
 # Redis endpoint
 REDIS_ADDR=localhost:6379
