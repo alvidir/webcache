@@ -34,38 +34,20 @@ var (
 	cache_size  = 128
 )
 
-// func setupBrowser(ctx context.Context) *wcache.Browser {
-// 	if path, exists := os.LookupEnv(ENV_CONFIG_PATH); exists {
-// 		configPath = path
-// 	}
+func setupConfiguration(logger *zap.Logger) *wcache.Config {
+	if path, exists := os.LookupEnv(ENV_CONFIG_PATH); exists {
+		configPath = path
+	}
 
-// 	browser, err := wcache.NewBrowser(YAML_REGEX, decoder)
-// 	if err != nil {
-// 		log.Fatalf("browser setup has failed: %s", err)
-// 	}
+	config, err := wcache.NewConfig(configPath)
+	if err != nil {
+		logger.Fatal("setting up configuration",
+			zap.String("path", configPath),
+			zap.Error(err))
+	}
 
-// 	if err := browser.ReadPath(configPath); err != nil {
-// 		log.Fatalf("read path has failed: %s", err)
-// 	}
-
-// 	value, err := util.LookupEnv(EnvWatchConfig)
-// 	if err != nil {
-// 		return browser
-// 	}
-
-// 	watch, err := strconv.ParseBool(value)
-// 	if err != nil {
-// 		return browser
-// 	}
-
-// 	if watch {
-// 		if err := browser.WatchPath(ctx, configPath); err != nil {
-// 			log.Fatalf("watch path has failed: %s", err)
-// 		}
-// 	}
-
-// 	return browser
-// }
+	return config
+}
 
 func setupCache(logger *zap.Logger) *wcache.RedisCache {
 	addr, exists := os.LookupEnv(ENV_REDIS_ADDR)
@@ -110,10 +92,8 @@ func main() {
 			zap.Error(err))
 	}
 
-	//ctx := context.Background()
-
-	//config := setupBrowser(ctx)
-	cache := setupCache()
+	cache := setupCache(logger)
+	config := setupConfiguration(logger)
 	proxy := wcache.NewReverseProxy(config, cache)
 
 	proxy.DigestRequest = func(req *http.Request) (string, error) {

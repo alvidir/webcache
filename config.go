@@ -3,12 +3,13 @@ package webcache
 import (
 	"io/ioutil"
 	"log"
+	"os"
 	"path"
 	"regexp"
 	"sync"
 	"time"
 
-	"github.com/alvidir/go-util"
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -16,36 +17,36 @@ const (
 	YAML_REGEX      = "^\\w*\\.(yaml|yml|YAML|YML)*$"
 )
 
-type CacheFile struct {
+type CacheConfig struct {
 	Timeout string   `yaml:"timeout"`
 	Methods []string `yaml:"methods"`
 	Enabled bool     `yaml:"enabled"`
 }
 
-type MethodFile struct {
+type MethodConfig struct {
 	Name    string            `yaml:"name"`
 	Enabled *bool             `yaml:"enabled"`
 	Cached  bool              `yaml:"cached"`
 	Headers map[string]string `yaml:"headers"`
 }
 
-type RequestFile struct {
-	Methods []MethodFile      `yaml:"methods"`
+type RequestConfig struct {
+	Methods []MethodConfig    `yaml:"methods"`
 	Headers map[string]string `yaml:"headers"`
 }
 
-type RouterFile struct {
+type RouterConfig struct {
 	Endpoints []string          `yaml:"endpoints"`
 	Headers   map[string]string `yaml:"headers"`
-	Methods   []MethodFile      `yaml:"methods"`
+	Methods   []MethodConfig    `yaml:"methods"`
 	Cached    bool              `yaml:"cached"`
 }
 
 // ConfigFile represents a configuration file for the webcache service
 type ConfigFile struct {
-	Cache   CacheFile    `yaml:"cache"`
-	Request RequestFile  `yaml:"request"`
-	Router  []RouterFile `yaml:"router"`
+	Cache   CacheConfig    `yaml:"cache"`
+	Request RequestConfig  `yaml:"request"`
+	Router  []RouterConfig `yaml:"router"`
 }
 
 // Config represents a set of settings to apply over http requests and responses' cache
@@ -54,84 +55,69 @@ type Config struct {
 }
 
 type endpointConfig struct {
-	router  RouterFile
-	request RequestFile
-	cache   CacheFile
+	router  RouterConfig
+	request RequestConfig
+	cache   CacheConfig
 }
 
-func (browser *Config) getEndpointConfig(endpoint string) (config *endpointConfig, exists bool) {
-	config = new(endpointConfig)
-
-	browser.files.Range(func(key, value interface{}) bool {
-		file, ok := value.(*ConfigFile)
-		if !ok || file == nil {
-			log.Printf("TYPE_ASSERT %s - want *File", endpoint)
-			browser.files.Delete(key)
-			return true
-		}
-
-		config.cache = file.Cache
-		config.request = file.Request
-
-		for _, route := range file.Router {
-			for _, regex := range route.Endpoints {
-				comp, err := regexp.Compile(regex)
-				if err != nil {
-					log.Printf("REGEX_COMP %s - %s", regex, err)
-					continue
-				}
-
-				if exists = comp.MatchString(endpoint); exists {
-					config.router = route
-					return false
-				}
-			}
-		}
-
-		return true
-	})
-
-	return
-}
-
-// ApplyFile reads the file located at the provided path p and stores its content
-func (browser *Config) ApplyFile(p string) (err error) {
-	var f ConfigFile
-	if err = util.YamlEncoder.Unmarshaler().Path(p, &f); err != nil {
-		return
+func NewConfig(path string) (*Config, error) {
+	stat, err := os.Stat(path)
+	if err != nil {
+		return nil, err
 	}
 
-	filename := path.Base(p)
-	browser.files.Store(filename, &f)
-	log.Printf("READ_FILE %s successfully applied", p)
-	return
+	var config Config
+	if stat.IsDir() {
+		err = config.ReadDir(path)
+	} else {
+		err = config.ReadFile(path)
+	}
+
+	return &config, err
 }
 
-// UnapplyFile removes the configuration from the given file path p
-func (browser *Config) UnapplyFile(p string) {
-	filename := path.Base(p)
-	browser.files.Delete(filename)
-	log.Printf("REMOVE_FILE %s successfully applied", p)
-}
-
-// ReadPath reads all files located at the provided path p that matches the browser's regex
-func (browser *Config) ReadPath(p string) error {
-	files, err := ioutil.ReadDir(p)
+// ReadDir applies all configuration files inside the given directory into the current configuration
+func (config *Config) ReadDir(dir string) error {
+	files, err := ioutil.ReadDir(dir)
 	if err != nil {
-		return browser.ApplyFile(p)
+		return err
+	}
+
+	yamlRegex, err := regexp.Compile(YAML_REGEX)
+	if err != nil {
+		return err
 	}
 
 	for _, f := range files {
-		if browser.regex != nil && !browser.regex.MatchString(f.Name()) {
+		if !yamlRegex.MatchString(f.Name()) {
 			continue
 		}
 
-		fullpath := path.Join(p, f.Name())
-		if err := browser.ApplyFile(fullpath); err != nil {
+		filepath := path.Join(dir, f.Name())
+		if err = config.ReadFile(filepath); err != nil {
 			return err
 		}
 	}
 
+	return nil
+}
+
+// ReadFile applies a configuration file into the current configuration
+func (config *Config) ReadFile(filepath string) error {
+	file, err := os.Open(filepath)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer file.Close()
+
+	var cfile ConfigFile
+	if err = yaml.NewDecoder(file).Decode(&cfile); err != nil {
+		return err
+	}
+
+	filename := path.Base(filepath)
+	config.files.Store(filename, &file)
 	return nil
 }
 
@@ -226,4 +212,39 @@ func (browser *Config) Headers(endpoint string, method string) map[string]string
 	}
 
 	return headers
+}
+
+func (browser *Config) getEndpointConfig(endpoint string) (config *endpointConfig, exists bool) {
+	config = new(endpointConfig)
+
+	browser.files.Range(func(key, value interface{}) bool {
+		file, ok := value.(*ConfigFile)
+		if !ok || file == nil {
+			log.Printf("TYPE_ASSERT %s - want *File", endpoint)
+			browser.files.Delete(key)
+			return true
+		}
+
+		config.cache = file.Cache
+		config.request = file.Request
+
+		for _, route := range file.Router {
+			for _, regex := range route.Endpoints {
+				comp, err := regexp.Compile(regex)
+				if err != nil {
+					log.Printf("REGEX_COMP %s - %s", regex, err)
+					continue
+				}
+
+				if exists = comp.MatchString(endpoint); exists {
+					config.router = route
+					return false
+				}
+			}
+		}
+
+		return true
+	})
+
+	return
 }
