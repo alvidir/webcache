@@ -20,7 +20,7 @@ const (
 	ENV_SERVICE_ADDR = "SERVICE_ADDR"
 	ENV_SERVICE_NETW = "SERVICE_NETW"
 	ENV_CONFIG_PATH  = "CONFIG_PATH"
-	ENV_REDIS_ADDR   = "REDIS_ADDR"
+	ENV_REDIS_DSN    = "REDIS_DSN"
 	ENV_CACHE_TTL    = "CACHE_TTL"
 	ENV_CACHE_SIZE   = "CACHE_SIZE"
 	YAML_REGEX       = "^\\w*\\.(yaml|yml|YAML|YML)*$"
@@ -31,15 +31,15 @@ var (
 	serviceNetw = "tcp"
 	configPath  = "/etc/webcache/"
 	cache_ttl   = 10 * time.Minute
-	cache_size  = 128
+	cache_size  = 1024
 )
 
-func setupConfiguration(logger *zap.Logger) *wcache.Config {
+func setupConfiguration(logger *zap.Logger) *wcache.ConfigGroup {
 	if path, exists := os.LookupEnv(ENV_CONFIG_PATH); exists {
 		configPath = path
 	}
 
-	config, err := wcache.NewConfig(configPath)
+	config, err := wcache.NewConfig(configPath, logger)
 	if err != nil {
 		logger.Fatal("setting up configuration",
 			zap.String("path", configPath),
@@ -50,7 +50,7 @@ func setupConfiguration(logger *zap.Logger) *wcache.Config {
 }
 
 func setupCache(logger *zap.Logger) *wcache.RedisCache {
-	addr, exists := os.LookupEnv(ENV_REDIS_ADDR)
+	addr, exists := os.LookupEnv(ENV_REDIS_DSN)
 	if !exists {
 		logger.Fatal("redis dsn must be set")
 	}

@@ -81,19 +81,19 @@ func FormatHttpRequest(req *http.Request) (format string) {
 }
 
 // A ReverseProxy is a cached reverse proxy that captures responses in order to provide it in the future instead of
-// permorming the request each time
+// permorming the same request each time
 type ReverseProxy struct {
 	DigestRequest func(req *http.Request) (string, error)
 	proxys        sync.Map
 	manager       Manager
-	cache         Cache
+	responses     Cache
 }
 
 // NewReverseProxy returns a brand new ReverseProxy with the provided config and cache
 func NewReverseProxy(manager Manager, cache Cache) *ReverseProxy {
 	reverse := &ReverseProxy{
-		manager: manager,
-		cache:   cache,
+		manager:   manager,
+		responses: cache,
 	}
 
 	return reverse
@@ -165,7 +165,7 @@ func (reverse *ReverseProxy) getCachedResponseBody(host string, req *http.Reques
 	}
 
 	resp := NewHttpResponse()
-	if err := reverse.cache.Load(tag, resp); err != nil && err != ErrNotCached {
+	if err := reverse.responses.Load(tag, resp); err != nil && err != ErrNotCached {
 		log.Printf("[%s] CACHE_MISS %s - %s", req.Method, tag, err.Error())
 		return nil, ErrNotCached
 	} else if resp.Empty() {
@@ -234,7 +234,7 @@ func (reverse *ReverseProxy) performHttpRequest(w http.ResponseWriter, req *http
 			}
 
 			timeout := reverse.manager.ResponseLifetime(host)
-			if err := reverse.cache.Store(tag, response, timeout); err != nil {
+			if err := reverse.responses.Store(tag, response, timeout); err != nil {
 				log.Printf("CACHE_STORE %s - %s", tag, err.Error())
 			} else {
 				log.Printf("CACHE_STORE %s", tag)

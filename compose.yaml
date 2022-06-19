@@ -1,0 +1,16 @@
+services:
+    redis:
+        container_name: redis
+        image: docker.io/redis:latest
+        restart: always
+
+    webcache:
+        container_name: webcache-server
+        image: localhost/alvidir/webcache:0.2.0
+        restart: always
+        volumes:
+            - .config:/app/.config
+        depends_on:
+            - redis
+        env_file:
+            - .env

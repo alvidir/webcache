@@ -8,7 +8,6 @@ COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
 
-# RUN go test ./...
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o webcache cmd/webcache/main.go
 
 ######## Start a new stage from scratch #######

@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"go.uber.org/zap"
 	"gopkg.in/yaml.v2"
 )
 
@@ -17,67 +18,90 @@ const (
 	YAML_REGEX      = "^\\w*\\.(yaml|yml|YAML|YML)*$"
 )
 
-type CacheConfig struct {
-	Timeout string   `yaml:"timeout"`
-	Methods []string `yaml:"methods"`
-	Enabled bool     `yaml:"enabled"`
-}
+var (
+	DefaultTimeout = 10 * time.Minute
+)
 
-type MethodConfig struct {
-	Name    string            `yaml:"name"`
-	Enabled *bool             `yaml:"enabled"`
-	Cached  bool              `yaml:"cached"`
+type Method struct {
+	Name    string `yaml:"name"`
+	Enabled *bool  `yaml:"enabled"`
+	Cached  *bool  `yaml:"cached"`
+	Timeout *string
 	Headers map[string]string `yaml:"headers"`
 }
 
-type RequestConfig struct {
-	Methods []MethodConfig    `yaml:"methods"`
-	Headers map[string]string `yaml:"headers"`
+type Router struct {
+	Endpoints []string `yaml:"endpoints"`
+	Methods   []Method `yaml:"methods"`
 }
 
-type RouterConfig struct {
-	Endpoints []string          `yaml:"endpoints"`
-	Headers   map[string]string `yaml:"headers"`
-	Methods   []MethodConfig    `yaml:"methods"`
-	Cached    bool              `yaml:"cached"`
-}
-
-// ConfigFile represents a configuration file for the webcache service
 type ConfigFile struct {
-	Cache   CacheConfig    `yaml:"cache"`
-	Request RequestConfig  `yaml:"request"`
-	Router  []RouterConfig `yaml:"router"`
+	Methods []Method `yaml:"methods"`
+	Router  []Router `yaml:"router"`
 }
 
-// Config represents a set of settings to apply over http requests and responses' cache
-type Config struct {
-	files sync.Map
+type options struct {
+	enabled bool
+	cached  bool
+	timeout time.Duration
+	headers map[string]string
 }
 
-type endpointConfig struct {
-	router  RouterConfig
-	request RequestConfig
-	cache   CacheConfig
+func newOptions() *options {
+	return &options{
+		headers: make(map[string]string),
+	}
 }
 
-func NewConfig(path string) (*Config, error) {
+func (ops *options) copy() *options {
+	copy := &options{
+		enabled: ops.enabled,
+		cached:  ops.cached,
+		timeout: ops.timeout,
+		headers: make(map[string]string),
+	}
+
+	for key, value := range ops.headers {
+		copy.headers[key] = value
+	}
+
+	return copy
+}
+
+type config struct {
+	regex   []*regexp.Regexp
+	options map[string]*options
+}
+
+// ConfigGroup represents a set of settings to apply over http requests and responses
+type ConfigGroup struct {
+	config []config
+	logger *zap.Logger
+	mu     sync.RWMutex
+}
+
+// NewConfigGroup reads the content of the provided path and returns the declared configuration
+func NewConfigGroup(path string, logger *zap.Logger) (*ConfigGroup, error) {
 	stat, err := os.Stat(path)
 	if err != nil {
 		return nil, err
 	}
 
-	var config Config
-	if stat.IsDir() {
-		err = config.ReadDir(path)
-	} else {
-		err = config.ReadFile(path)
+	group := &ConfigGroup{
+		logger: logger,
 	}
 
-	return &config, err
+	if stat.IsDir() {
+		err = group.ReadDir(path)
+	} else {
+		err = group.ReadFile(path)
+	}
+
+	return group, err
 }
 
 // ReadDir applies all configuration files inside the given directory into the current configuration
-func (config *Config) ReadDir(dir string) error {
+func (group *ConfigGroup) ReadDir(dir string) error {
 	files, err := ioutil.ReadDir(dir)
 	if err != nil {
 		return err
@@ -94,7 +118,7 @@ func (config *Config) ReadDir(dir string) error {
 		}
 
 		filepath := path.Join(dir, f.Name())
-		if err = config.ReadFile(filepath); err != nil {
+		if err = group.ReadFile(filepath); err != nil {
 			return err
 		}
 	}
@@ -103,148 +127,149 @@ func (config *Config) ReadDir(dir string) error {
 }
 
 // ReadFile applies a configuration file into the current configuration
-func (config *Config) ReadFile(filepath string) error {
-	file, err := os.Open(filepath)
+func (group *ConfigGroup) ReadFile(filepath string) error {
+	file, err := group.read(filepath)
+	if err != nil {
+		return err
+	}
+
+	return group.AddConfig(file)
+}
+
+// AddConfig registers the given configuration into the config group
+func (group *ConfigGroup) AddConfig(file *ConfigFile) error {
+	globalOps, err := group.mapOptions(file.Methods, nil)
+	if err != nil {
+		return err
+	}
+
+	group.config = make([]config, len(file.Router))
+	for ri, router := range file.Router {
+		config := config{
+			regex: make([]*regexp.Regexp, len(router.Endpoints)),
+		}
+
+		for ei, rx := range router.Endpoints {
+			comp, err := regexp.Compile(rx)
+			if err != nil {
+				return err
+			}
+
+			config.regex[ei] = comp
+		}
+
+		config.options, err = group.mapOptions(router.Methods, globalOps)
+		if err != nil {
+			return err
+		}
+
+		group.config[ri] = config
+	}
+
+	return nil
+}
+
+func (group *ConfigGroup) read(filepath string) (*ConfigFile, error) {
+	f, err := os.Open(filepath)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	defer file.Close()
+	defer f.Close()
 
-	var cfile ConfigFile
-	if err = yaml.NewDecoder(file).Decode(&cfile); err != nil {
-		return err
+	var file ConfigFile
+	if err = yaml.NewDecoder(f).Decode(&file); err != nil {
+		return nil, err
 	}
 
-	filename := path.Base(filepath)
-	config.files.Store(filename, &file)
-	return nil
+	return &file, nil
 }
 
-// IsEndpointAllowed returns true if, and only if, the given enpoint is allowed
-func (browser *Config) IsEndpointAllowed(endpoint string) (ok bool) {
-	_, ok = browser.getEndpointConfig(endpoint)
-	return
+func (group *ConfigGroup) buildOptions(m *Method, base *options) (*options, error) {
+	var ops *options
+	if base == nil {
+		ops = newOptions()
+	} else {
+		ops = base.copy()
+	}
+
+	if m == nil {
+		return ops, nil
+	}
+
+	if m.Enabled != nil {
+		ops.enabled = *m.Enabled
+	}
+
+	if m.Cached != nil {
+		ops.cached = *m.Cached
+	}
+
+	if m.Timeout == nil {
+		ops.timeout = DefaultTimeout
+	} else {
+		timeout, err := time.ParseDuration(*m.Timeout)
+		if err != nil {
+			return nil, err
+		}
+
+		ops.timeout = timeout
+	}
+
+	for key, value := range m.Headers {
+		ops.headers[key] = value
+	}
+
+	return ops, nil
 }
 
-// IsMethodAllowed returns true if, and only if, the given method is allowed for the given endpoint
-func (browser *Config) IsMethodAllowed(endpoint string, method string) bool {
-	config, ok := browser.getEndpointConfig(endpoint)
-	if !ok {
-		return false
+func (group *ConfigGroup) mapOptions(m []Method, base map[string]*options) (mops map[string]*options, err error) {
+	mops = make(map[string]*options)
+
+	if base == nil {
+		mops[DEFAULT_KEYWORD] = newOptions()
+	} else if globalDef, exists := base[DEFAULT_KEYWORD]; !exists {
+		mops[DEFAULT_KEYWORD] = newOptions()
+	} else {
+		mops[DEFAULT_KEYWORD] = globalDef.copy()
 	}
 
-	if config == nil {
-		return false
+	var localDef *Method
+	for _, method := range m {
+		if method.Name != DEFAULT_KEYWORD {
+			continue
+		}
+
+		localDef = &method
+		ops, err := group.buildOptions(&method, mops[DEFAULT_KEYWORD])
+		if err != nil {
+			return nil, err
+		}
+
+		mops[DEFAULT_KEYWORD] = ops
+		break
 	}
 
-	for _, rmethod := range config.router.Methods {
-		if rmethod.Name == DEFAULT_KEYWORD || rmethod.Name == method {
-			return rmethod.Enabled == nil || *rmethod.Enabled
+	for _, method := range m {
+		if method.Name == DEFAULT_KEYWORD {
+			continue
+		}
+
+		var mbase *options
+		if base == nil {
+			mbase = mops[DEFAULT_KEYWORD]
+		} else if globalDef, exists := base[method.Name]; !exists {
+			mbase = mops[DEFAULT_KEYWORD]
+		} else if mbase, err = group.buildOptions(localDef, globalDef); err != nil {
+			return nil, err
+		}
+
+		if ops, err := group.buildOptions(&method, mbase); err != nil {
+			return nil, err
+		} else {
+			mops[method.Name] = ops
 		}
 	}
 
-	for _, rmethod := range config.request.Methods {
-		if rmethod.Name == DEFAULT_KEYWORD || rmethod.Name == method {
-			return rmethod.Enabled == nil || *rmethod.Enabled
-		}
-	}
-
-	return false
-}
-
-// IsMethodCached returns true if, and only if, is allowed to cach responses for the given endpoint and method
-func (browser *Config) IsMethodCached(endpoint string, method string) bool {
-	config, ok := browser.getEndpointConfig(endpoint)
-	if !ok {
-		return false
-	}
-
-	return config.cache.Enabled && config.router.Cached
-}
-
-// ResponseLifetime returns the duration a response is considered valid
-func (browser *Config) ResponseLifetime(endpoint string) time.Duration {
-	config, ok := browser.getEndpointConfig(endpoint)
-	if !ok {
-		return 0
-	}
-
-	lifetime, err := time.ParseDuration(config.cache.Timeout)
-	if err != nil {
-		log.Printf("PARSE_TIME %s - %s", endpoint, err.Error())
-		return 0
-	}
-
-	return lifetime
-}
-
-// Headers returns all those headers to add to any request with the given endpoint and method
-func (browser *Config) Headers(endpoint string, method string) map[string]string {
-	headers := make(map[string]string)
-	config, ok := browser.getEndpointConfig(endpoint)
-	if !ok {
-		return headers
-	}
-
-	for key, value := range config.request.Headers {
-		headers[key] = value
-	}
-
-	for _, rmethod := range config.request.Methods {
-		if rmethod.Name == DEFAULT_KEYWORD || rmethod.Name == method {
-			for key, value := range rmethod.Headers {
-				headers[key] = value
-			}
-		}
-	}
-
-	for key, value := range config.router.Headers {
-		headers[key] = value
-	}
-
-	for _, rmethod := range config.router.Methods {
-		if rmethod.Name == DEFAULT_KEYWORD || rmethod.Name == method {
-			for key, value := range rmethod.Headers {
-				headers[key] = value
-			}
-		}
-	}
-
-	return headers
-}
-
-func (browser *Config) getEndpointConfig(endpoint string) (config *endpointConfig, exists bool) {
-	config = new(endpointConfig)
-
-	browser.files.Range(func(key, value interface{}) bool {
-		file, ok := value.(*ConfigFile)
-		if !ok || file == nil {
-			log.Printf("TYPE_ASSERT %s - want *File", endpoint)
-			browser.files.Delete(key)
-			return true
-		}
-
-		config.cache = file.Cache
-		config.request = file.Request
-
-		for _, route := range file.Router {
-			for _, regex := range route.Endpoints {
-				comp, err := regexp.Compile(regex)
-				if err != nil {
-					log.Printf("REGEX_COMP %s - %s", regex, err)
-					continue
-				}
-
-				if exists = comp.MatchString(endpoint); exists {
-					config.router = route
-					return false
-				}
-			}
-		}
-
-		return true
-	})
-
-	return
+	return mops, nil
 }
