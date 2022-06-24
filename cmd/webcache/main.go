@@ -39,7 +39,7 @@ func setupConfiguration(logger *zap.Logger) *wcache.ConfigGroup {
 		configPath = path
 	}
 
-	config, err := wcache.NewConfig(configPath, logger)
+	config, err := wcache.NewConfigGroup(configPath, logger)
 	if err != nil {
 		logger.Fatal("setting up configuration",
 			zap.String("path", configPath),

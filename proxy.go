@@ -4,7 +4,6 @@ import (
 	"crypto/md5"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -12,6 +11,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 const (
@@ -29,11 +30,7 @@ type Cache interface {
 
 // A Manager represents a set of settings about how the ReverseProxy must perform
 type Manager interface {
-	IsEndpointAllowed(string) bool
-	IsMethodAllowed(string, string) bool
-	IsMethodCached(string, string) bool
-	ResponseLifetime(string) time.Duration
-	Headers(string, string) map[string]string
+	RequestOptions(endpoint, method string) (*Options, bool)
 }
 
 // DigestRequest returns the md5 of the given request rq taking as input parameters the request's method,
@@ -87,6 +84,7 @@ type ReverseProxy struct {
 	proxys        sync.Map
 	manager       Manager
 	responses     Cache
+	logger        *zap.Logger
 }
 
 // NewReverseProxy returns a brand new ReverseProxy with the provided config and cache
@@ -99,7 +97,7 @@ func NewReverseProxy(manager Manager, cache Cache) *ReverseProxy {
 	return reverse
 }
 
-func (reverse *ReverseProxy) targetURI(req *http.Request) (host string, err error) {
+func (reverse *ReverseProxy) target(req *http.Request) (host string, err error) {
 	if targets, ok := req.Header[HTTP_LOCATION_HEADER]; ok && len(targets) > 0 {
 		return targets[0], nil
 	}
@@ -107,33 +105,37 @@ func (reverse *ReverseProxy) targetURI(req *http.Request) (host string, err erro
 	return "", ErrNoContent
 }
 
-func (reverse *ReverseProxy) tag(host string, req *http.Request) (tag string, err error) {
-	tag = req.Header.Get(ETAG_SERVER_HEADER)
-	if reverse.DigestRequest != nil {
-		tag, err = reverse.DigestRequest(req)
-		if err != nil {
-			log.Printf("[%s] REQ_TAG %s - %s", req.Method, host, err.Error())
-			return
-		}
+func (reverse *ReverseProxy) tag(req *http.Request) (string, error) {
+	if reverse.DigestRequest == nil {
+		return req.Header.Get(ETAG_SERVER_HEADER), nil
 	}
 
-	tag = fmt.Sprintf("%s::%s::%s", req.Method, host, tag)
-	return
+	host, _ := reverse.target(req)
+	tag, err := reverse.DigestRequest(req)
+	if err != nil {
+		reverse.logger.Error("digesting http request",
+			zap.String("host", host),
+			zap.String("method", req.Method),
+			zap.Error(err))
+
+		return "", ErrUnknown
+	}
+
+	return fmt.Sprintf("%s::%s::%s", req.Method, host, tag), nil
 }
 
-func (reverse *ReverseProxy) getSingleHostReverseProxy(host string) (*httputil.ReverseProxy, error) {
+func (reverse *ReverseProxy) singleHostReverseProxy(host string) (*httputil.ReverseProxy, error) {
 	if v, ok := reverse.proxys.Load(host); ok {
-		if fn, ok := v.(*httputil.ReverseProxy); ok {
-			return fn, nil
-		}
-
-		log.Printf("TYPE_ASSERT %s - want *httputil.ReverseProxy", host)
+		return v.(*httputil.ReverseProxy), nil
 	}
 
 	remoteUrl, err := url.Parse(host)
 	if err != nil {
-		log.Printf("URL_PARSE %s - %s", host, err.Error())
-		return nil, err
+		reverse.logger.Error("parsing url",
+			zap.String("url", host),
+			zap.Error(err))
+
+		return nil, ErrUnknown
 	}
 
 	proxy := &httputil.ReverseProxy{
@@ -145,141 +147,164 @@ func (reverse *ReverseProxy) getSingleHostReverseProxy(host string) (*httputil.R
 			req.Host = remoteUrl.Host
 
 			req.Header.Del(HTTP_LOCATION_HEADER)
-			//log.Printf("REQUEST\n%s\n", FormatHttpRequest(req))
 		},
 	}
-
 	reverse.proxys.Store(host, proxy)
 	return proxy, nil
 }
 
-func (reverse *ReverseProxy) getCachedResponseBody(host string, req *http.Request) (*HttpResponse, error) {
-	if !reverse.manager.IsMethodCached(host, req.Method) {
-		log.Printf("[%s] CACHE_MISS %s", req.Method, host)
-		return nil, ErrNotCached
+func (reverse *ReverseProxy) storeResponseBody(req *http.Request, resp *HttpResponse, ops *Options) {
+	tag, _ := reverse.tag(req)
+	timeout := ops.timeout
+
+	if err := reverse.responses.Store(tag, resp, timeout); err != nil {
+		reverse.logger.Error("storing response",
+			zap.String("tag", tag),
+			zap.Error(err))
+	} else {
+		reverse.logger.Info("response stored",
+			zap.String("tag", tag))
+	}
+}
+
+func (reverse *ReverseProxy) loadResponseBody(req *http.Request, ops *Options) (*HttpResponse, error) {
+	host, _ := reverse.target(req)
+
+	if !ops.cached {
+		reverse.logger.Info("cache miss",
+			zap.String("host", host),
+			zap.String("method", req.Method))
+
+		return nil, ErrNotFound
 	}
 
-	tag, err := reverse.tag(host, req)
+	tag, err := reverse.tag(req)
 	if err != nil {
 		return nil, err
 	}
 
 	resp := NewHttpResponse()
-	if err := reverse.responses.Load(tag, resp); err != nil && err != ErrNotCached {
-		log.Printf("[%s] CACHE_MISS %s - %s", req.Method, tag, err.Error())
-		return nil, ErrNotCached
+	if err := reverse.responses.Load(tag, resp); err != nil && err != ErrNotFound {
+		reverse.logger.Warn("cache miss",
+			zap.String("host", host),
+			zap.String("method", req.Method),
+			zap.Error(err))
+
+		return nil, ErrNotFound
 	} else if resp.Empty() {
-		log.Printf("[%s] CACHE_MISS %s - %s", req.Method, tag, ErrNotCached.Error())
-		return nil, ErrNotCached
+		reverse.logger.Info("cache miss",
+			zap.String("host", host),
+			zap.String("method", req.Method))
+
+		return nil, ErrNotFound
 	}
 
-	log.Printf("[%s] CACHE_HIT %s - %+v", req.Method, tag, resp)
+	reverse.logger.Warn("cache hit",
+		zap.String("host", host),
+		zap.String("method", req.Method),
+		zap.Error(err))
+
 	return resp, nil
 }
 
-func (reverse *ReverseProxy) includeCustomHeaders(host string, req *http.Request) {
-	for key, value := range reverse.manager.Headers(host, req.Method) {
+func (reverse *ReverseProxy) addHeaders(req *http.Request, ops *Options) {
+	for key, value := range ops.headers {
 		req.Header.Add(key, value)
 	}
 }
 
-func (reverse *ReverseProxy) performHttpRequest(w http.ResponseWriter, req *http.Request, host string) error {
-	proxy, err := reverse.getSingleHostReverseProxy(host)
+func (reverse *ReverseProxy) follow(req *http.Request, ops *Options, host string) (*HttpResponse, error) {
+	proxy, err := reverse.singleHostReverseProxy(host)
 	if err != nil {
-		log.Printf("[%s] PROXY %s - %s", req.Method, host, err.Error())
-		return err
+		return nil, err
 	}
 
-	proxy.ErrorLog = log.Default()
-	reverse.includeCustomHeaders(host, req)
+	resp := NewHttpResponse()
+	proxy.ServeHTTP(resp, req)
 
-	if !reverse.manager.IsMethodCached(host, req.Method) {
-		proxy.ServeHTTP(w, req)
-		return nil
+	if resp.Code/100 == HTTP_CODE_REDIRECT/100 {
+		return resp, nil
 	}
 
-	response := NewHttpResponse()
-	proxy.ServeHTTP(response, req)
+	// response.Code is redirect: 3XX
+	locs, exists := resp.Header()[HTTP_LOCATION_HEADER]
+	if !exists || len(locs) == 0 {
+		reverse.logger.Error("getting location header",
+			zap.String("host", host),
+			zap.Error(ErrNotFound))
 
-	//log.Printf("RESPONSE\n%s\n", response.Format())
-
-	if diff := response.Code - HTTP_CODE_REDIRECT; 0 <= diff && diff < 100 {
-		// as HTTP_CODE_REDIRECT == 300, then diff is somewhere between 300 and 399
-		headers := response.Header()
-		if locations, exists := headers[HTTP_LOCATION_HEADER]; !exists || len(locations) == 0 {
-			log.Printf("REDIRECT %s - %s http header must be set", host, HTTP_LOCATION_HEADER)
-			return nil
-		} else if len(locations) > 1 {
-			log.Printf("REDIRECT %s - %s http header has too much values", host, HTTP_LOCATION_HEADER)
-			return nil
-		}
-
-		location := headers[HTTP_LOCATION_HEADER][0]
-		location = strings.Split(location, "?")[0]
-		if location == host {
-			log.Printf("REDIRECT %s - cyclical redirection to itself", host)
-			response.Echo(w)
-			return nil
-		}
-
-		log.Printf("REDIRECT %s - has been moved to %s", host, location)
-		return reverse.performHttpRequest(w, req, location)
+		return nil, ErrNotFound
 	}
 
-	if response.Code < HTTP_CODE_BOUNDARY {
-		go func() {
-			tag, err := reverse.tag(host, req)
-			if err != nil {
-				return
-			}
+	target := locs[0]
+	target = strings.Split(target, "?")[0]
+	if target == host {
+		reverse.logger.Warn("cyclical redirection",
+			zap.String("host", host),
+			zap.String("location", target))
 
-			timeout := reverse.manager.ResponseLifetime(host)
-			if err := reverse.responses.Store(tag, response, timeout); err != nil {
-				log.Printf("CACHE_STORE %s - %s", tag, err.Error())
-			} else {
-				log.Printf("CACHE_STORE %s", tag)
-			}
-		}()
+		return resp, nil
 	}
 
-	response.Echo(w)
-	return nil
+	reverse.logger.Info("host has been moved",
+		zap.String("host", host),
+		zap.String("location", target))
+
+	return reverse.follow(req, ops, target)
+}
+
+func (reverse *ReverseProxy) perform(w http.ResponseWriter, req *http.Request, ops *Options) {
+	host, _ := reverse.target(req)
+	resp, err := reverse.follow(req, ops, host)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("500: Internal server error"))
+	}
+
+	if ops.cached && resp.Code < HTTP_CODE_BOUNDARY {
+		reverse.storeResponseBody(req, resp, ops)
+	}
+
+	if _, err := resp.Echo(w); err != nil {
+		reverse.logger.Error("sending response back to the client",
+			zap.Error(err))
+	}
 }
 
 // ServeHTTP performs http requests if not cached yet or returns the chaced body instead
 func (reverse *ReverseProxy) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	host, err := reverse.targetURI(req)
+	host, err := reverse.target(req)
 	if err != nil {
-		log.Printf("TARGET_URI %s", err)
+		reverse.logger.Error("getting request's target host",
+			zap.Error(err))
 
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("400: Bad request"))
 		return
 	}
 
-	if !reverse.manager.IsEndpointAllowed(host) {
+	ops, _ := reverse.manager.RequestOptions(host, req.Method)
+	if ops == nil {
 		w.WriteHeader(http.StatusForbidden)
 		w.Write([]byte("403: Host forbidden " + host))
 		return
 	}
 
-	if !reverse.manager.IsMethodAllowed(host, req.Method) {
+	if !ops.enabled {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		w.Write([]byte("405: Method not allowed " + host))
 		return
 	}
 
-	if resp, err := reverse.getCachedResponseBody(host, req); err == nil {
+	if resp, err := reverse.loadResponseBody(req, ops); err == nil {
 		resp.Echo(w)
 		return
-	} else if err != ErrNotCached && err != ErrNoContent {
+	} else if err != ErrNotFound && err != ErrNoContent {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("500: Internal server error"))
 		return
 	}
 
-	if err := reverse.performHttpRequest(w, req, host); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("500: Internal server error"))
-	}
+	reverse.addHeaders(req, ops)
+	reverse.perform(w, req, ops)
 }

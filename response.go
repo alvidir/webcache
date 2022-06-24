@@ -27,7 +27,7 @@ func (r *HttpResponse) WriteHeader(i int) {
 	r.Code = i
 }
 
-func (r *HttpResponse) Echo(w http.ResponseWriter) {
+func (r *HttpResponse) Echo(w http.ResponseWriter) (int, error) {
 	for header, values := range r.Headers {
 		for _, value := range values {
 			w.Header().Add(header, value)
@@ -35,7 +35,7 @@ func (r *HttpResponse) Echo(w http.ResponseWriter) {
 	}
 
 	w.WriteHeader(r.Code)
-	w.Write(r.Body)
+	return w.Write(r.Body)
 }
 
 func (r *HttpResponse) Format() (format string) {
