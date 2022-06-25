@@ -222,7 +222,7 @@ func (reverse *ReverseProxy) follow(req *http.Request, ops *Options, host string
 	resp := NewHttpResponse()
 	proxy.ServeHTTP(resp, req)
 
-	if resp.Code/100 == HTTP_CODE_REDIRECT/100 {
+	if resp.Code/100 != HTTP_CODE_REDIRECT/100 {
 		return resp, nil
 	}
 

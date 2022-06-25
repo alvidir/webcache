@@ -82,22 +82,6 @@ type ConfigGroup struct {
 	mu      sync.RWMutex
 }
 
-func (group *ConfigGroup) RequestOptions(endpoint string, method string) (*Options, bool) {
-	for _, config := range group.configs {
-		for _, regex := range config.regex {
-			if !regex.MatchString(endpoint) {
-				continue
-			}
-
-			if ops, exists := config.options[method]; exists {
-				return ops, true
-			}
-		}
-	}
-
-	return group.base[method], false
-}
-
 func (group *ConfigGroup) read(filepath string) (*ConfigFile, error) {
 	f, err := os.Open(filepath)
 	if err != nil {
@@ -288,4 +272,21 @@ func (group *ConfigGroup) AddConfig(file *ConfigFile) (err error) {
 	}
 
 	return nil
+}
+
+// RequestOptions returns the Options instance for the given endpoint and method
+func (group *ConfigGroup) RequestOptions(endpoint string, method string) (*Options, bool) {
+	for _, config := range group.configs {
+		for _, regex := range config.regex {
+			if !regex.MatchString(endpoint) {
+				continue
+			}
+
+			if ops, exists := config.options[method]; exists {
+				return ops, true
+			}
+		}
+	}
+
+	return group.base[method], false
 }
