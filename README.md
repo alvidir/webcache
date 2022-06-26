@@ -60,5 +60,5 @@ REDIS_DSN=redis://localhost:6379
 
 # In-memory cache configuration 
 CACHE_SIZE=1024 # how many entries the local cache can have
-CACHE_TTL=10s # for how long an entry is stored in the local cache
+CACHE_TTL=10m # for how long an entry is stored in the local cache
 ```

@@ -6,17 +6,17 @@ REMOTE=docker.io
 release: build push
 
 build:
-	podman build -t ${REPO}/${PROJECT}:${VERSION} -f ./docker/webcache/dockerfile .
+	podman build -t ${REPO}/${PROJECT}:${VERSION} -f ./container/webcache/containerfile .
 
 push:
 	podman tag localhost/${REPO}/${PROJECT}:${VERSION} ${REMOTE}/${REPO}/${PROJECT}:${VERSION}
 	podman push ${REMOTE}/${REPO}/${PROJECT}:${VERSION}
 
 deploy:
-	podman-compose -f docker-compose.yaml up --remove-orphans -d
+	podman-compose -f compose.yaml up --remove-orphans
 
 undeploy:
-	podman-compose -f docker-compose.yaml down
+	podman-compose -f compose.yaml down
 
 run:
 	go run cmd/webcache/main.go
