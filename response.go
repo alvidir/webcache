@@ -6,6 +6,10 @@ import (
 	"strings"
 )
 
+const (
+	defResponseCode = 418 // I'M A TEAPOT
+)
+
 type HttpResponse struct {
 	Body    []byte
 	Headers http.Header
@@ -27,7 +31,7 @@ func (r *HttpResponse) WriteHeader(i int) {
 	r.Code = i
 }
 
-func (r *HttpResponse) Echo(w http.ResponseWriter) {
+func (r *HttpResponse) Echo(w http.ResponseWriter) (int, error) {
 	for header, values := range r.Headers {
 		for _, value := range values {
 			w.Header().Add(header, value)
@@ -35,7 +39,7 @@ func (r *HttpResponse) Echo(w http.ResponseWriter) {
 	}
 
 	w.WriteHeader(r.Code)
-	w.Write(r.Body)
+	return w.Write(r.Body)
 }
 
 func (r *HttpResponse) Format() (format string) {
@@ -56,13 +60,13 @@ func (r *HttpResponse) Format() (format string) {
 func (r *HttpResponse) Empty() bool {
 	return len(r.Body) == 0 &&
 		len(r.Headers) == 0 &&
-		r.Code == 0
+		r.Code == defResponseCode
 }
 
 func NewHttpResponse() *HttpResponse {
 	return &HttpResponse{
 		Body:    []byte{},
 		Headers: make(http.Header),
-		Code:    0,
+		Code:    defResponseCode,
 	}
 }
