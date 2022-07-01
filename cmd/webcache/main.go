@@ -94,7 +94,7 @@ func main() {
 
 	cache := setupCache(logger)
 	config := setupConfiguration(logger)
-	proxy := wcache.NewReverseProxy(config, cache)
+	proxy := wcache.NewReverseProxy(config, cache, logger)
 
 	proxy.DigestRequest = func(req *http.Request) (string, error) {
 		digestBytes := wcache.DigestRequest(req, []string{wcache.HTTP_LOCATION_HEADER})

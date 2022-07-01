@@ -2,6 +2,7 @@ package webcache
 
 import (
 	"crypto/md5"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -88,10 +89,11 @@ type ReverseProxy struct {
 }
 
 // NewReverseProxy returns a brand new ReverseProxy with the provided config and cache
-func NewReverseProxy(manager Manager, cache Cache) *ReverseProxy {
+func NewReverseProxy(manager Manager, cache Cache, logger *zap.Logger) *ReverseProxy {
 	reverse := &ReverseProxy{
 		manager:   manager,
 		responses: cache,
+		logger:    logger,
 	}
 
 	return reverse
@@ -138,17 +140,14 @@ func (reverse *ReverseProxy) singleHostReverseProxy(host string) (*httputil.Reve
 		return nil, ErrUnknown
 	}
 
-	proxy := &httputil.ReverseProxy{
-		Director: func(req *http.Request) {
-			req.Header.Add("X-Forwarded-Host", req.Host)
-			req.Header.Add("X-Target-Host", remoteUrl.Host)
-			req.URL.Scheme = remoteUrl.Scheme
-			req.URL.Host = remoteUrl.Host
-			req.Host = remoteUrl.Host
-
-			req.Header.Del(HTTP_LOCATION_HEADER)
-		},
+	proxy := httputil.NewSingleHostReverseProxy(remoteUrl)
+	proxy.Director = func(req *http.Request) {
+		req.Header.Del(HTTP_LOCATION_HEADER)
+		req.URL.Scheme = remoteUrl.Scheme
+		req.URL.Host = remoteUrl.Host
+		req.Host = remoteUrl.Host
 	}
+
 	reverse.proxys.Store(host, proxy)
 	return proxy, nil
 }
@@ -167,7 +166,7 @@ func (reverse *ReverseProxy) storeResponseBody(req *http.Request, resp *HttpResp
 	}
 }
 
-func (reverse *ReverseProxy) loadResponseBody(req *http.Request, ops *Options) (*HttpResponse, error) {
+func (reverse *ReverseProxy) loadResponseBody(req *http.Request, ops *Options) (*HttpResponse, bool) {
 	host, _ := reverse.target(req)
 
 	if !ops.cached {
@@ -175,28 +174,31 @@ func (reverse *ReverseProxy) loadResponseBody(req *http.Request, ops *Options) (
 			zap.String("host", host),
 			zap.String("method", req.Method))
 
-		return nil, ErrNotFound
+		return nil, false
 	}
 
 	tag, err := reverse.tag(req)
 	if err != nil {
-		return nil, err
+		return nil, false
 	}
 
 	resp := NewHttpResponse()
-	if err := reverse.responses.Load(tag, resp); err != nil && err != ErrNotFound {
-		reverse.logger.Warn("cache miss",
+	if err := reverse.responses.Load(tag, &resp); err != nil &&
+		!errors.Is(err, ErrNotFound) {
+		reverse.logger.Warn("loading response from cache",
 			zap.String("host", host),
 			zap.String("method", req.Method),
 			zap.Error(err))
 
-		return nil, ErrNotFound
-	} else if resp.Empty() {
+		return nil, false
+	}
+
+	if resp.Empty() {
 		reverse.logger.Info("cache miss",
 			zap.String("host", host),
 			zap.String("method", req.Method))
 
-		return nil, ErrNotFound
+		return nil, false
 	}
 
 	reverse.logger.Warn("cache hit",
@@ -204,7 +206,7 @@ func (reverse *ReverseProxy) loadResponseBody(req *http.Request, ops *Options) (
 		zap.String("method", req.Method),
 		zap.Error(err))
 
-	return resp, nil
+	return resp, true
 }
 
 func (reverse *ReverseProxy) addHeaders(req *http.Request, ops *Options) {
@@ -214,6 +216,9 @@ func (reverse *ReverseProxy) addHeaders(req *http.Request, ops *Options) {
 }
 
 func (reverse *ReverseProxy) follow(req *http.Request, ops *Options, host string) (*HttpResponse, error) {
+	reverse.logger.Info("performing request",
+		zap.String("host", host))
+
 	proxy, err := reverse.singleHostReverseProxy(host)
 	if err != nil {
 		return nil, err
@@ -296,12 +301,8 @@ func (reverse *ReverseProxy) ServeHTTP(w http.ResponseWriter, req *http.Request)
 		return
 	}
 
-	if resp, err := reverse.loadResponseBody(req, ops); err == nil {
+	if resp, exists := reverse.loadResponseBody(req, ops); exists {
 		resp.Echo(w)
-		return
-	} else if err != ErrNotFound && err != ErrNoContent {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("500: Internal server error"))
 		return
 	}
 

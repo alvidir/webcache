@@ -233,6 +233,9 @@ func (group *ConfigGroup) ReadDir(dir string) error {
 
 // ReadFile applies a configuration file into the current configuration
 func (group *ConfigGroup) ReadFile(filepath string) error {
+	group.logger.Info("applying configuration file",
+		zap.String("path", filepath))
+
 	file, err := group.read(filepath)
 	if err != nil {
 		return err
@@ -284,9 +287,15 @@ func (group *ConfigGroup) RequestOptions(endpoint string, method string) (*Optio
 
 			if ops, exists := config.options[method]; exists {
 				return ops, true
+			} else if ops, exists := config.options[DEFAULT_KEYWORD]; exists {
+				return ops, true
 			}
 		}
 	}
 
-	return group.base[method], false
+	if ops, exists := group.base[method]; !exists {
+		return group.base[DEFAULT_KEYWORD], false
+	} else {
+		return ops, false
+	}
 }
