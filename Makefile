@@ -13,7 +13,7 @@ push:
 	podman push ${REMOTE}/${REPO}/${PROJECT}:${VERSION}
 
 deploy:
-	podman-compose -f compose.yaml up --remove-orphans
+	podman-compose -f compose.yaml up --remove-orphans -d
 
 undeploy:
 	podman-compose -f compose.yaml down

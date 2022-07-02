@@ -189,8 +189,6 @@ func (reverse *ReverseProxy) loadResponseBody(req *http.Request, ops *Options) (
 			zap.String("host", host),
 			zap.String("method", req.Method),
 			zap.Error(err))
-
-		return nil, false
 	}
 
 	if resp.Empty() {
