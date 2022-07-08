@@ -56,7 +56,7 @@ SERVICE_NETWORK=tcp
 CONFIG_PATH=.config/
 
 # Redis datasource
-REDIS_DSN=redis://localhost:6379
+REDIS_DSN=webcache-redis:6379
 
 # In-memory cache configuration 
 CACHE_SIZE=1024 # how many entries the local cache can have
