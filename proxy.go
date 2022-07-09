@@ -29,8 +29,8 @@ type Cache interface {
 	Load(string, interface{}) error
 }
 
-// A Manager represents a set of settings about how the ReverseProxy must perform
-type Manager interface {
+// A Config represents a set of settings about how the ReverseProxy must perform
+type Config interface {
 	RequestOptions(endpoint, method string) (*Options, bool)
 }
 
@@ -83,13 +83,13 @@ func FormatHttpRequest(req *http.Request) (format string) {
 type ReverseProxy struct {
 	DigestRequest func(req *http.Request) (string, error)
 	proxys        sync.Map
-	manager       Manager
+	manager       Config
 	responses     Cache
 	logger        *zap.Logger
 }
 
 // NewReverseProxy returns a brand new ReverseProxy with the provided config and cache
-func NewReverseProxy(manager Manager, cache Cache, logger *zap.Logger) *ReverseProxy {
+func NewReverseProxy(manager Config, cache Cache, logger *zap.Logger) *ReverseProxy {
 	reverse := &ReverseProxy{
 		manager:   manager,
 		responses: cache,
