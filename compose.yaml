@@ -11,7 +11,7 @@ services:
 
     webcache:
         container_name: webcache-server
-        image: localhost/alvidir/webcache:1.0.0
+        image: localhost/webcache:latest
         restart: always
         ports:
             - 8000:8000

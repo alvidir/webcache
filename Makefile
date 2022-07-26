@@ -1,19 +1,8 @@
-VERSION=1.0.0
-PROJECT=webcache
-REPO=alvidir
-REMOTE=docker.io
-
-release: build push
-
 build:
-	podman build -t ${REPO}/${PROJECT}:${VERSION} -f ./container/webcache/containerfile .
-
-push:
-	podman tag localhost/${REPO}/${PROJECT}:${VERSION} ${REMOTE}/${REPO}/${PROJECT}:${VERSION}
-	podman push ${REMOTE}/${REPO}/${PROJECT}:${VERSION}
+	podman build -t webcache:latest -f ./container/webcache/containerfile .
 
 deploy:
-	podman-compose -f compose.yaml up --remove-orphans -d
+	podman-compose -f compose.yaml up --remove-orphans
 
 undeploy:
 	podman-compose -f compose.yaml down

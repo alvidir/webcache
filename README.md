@@ -1,7 +1,7 @@
 # webcache
 
-[![Go version](https://img.shields.io/badge/Go-go1.18-blue.svg)](https://go.dev/) [![tests](https://github.com/alvidir/webcache/actions/workflows/test.yaml/badge.svg?branch=master)](https://github.com/alvidir/webcache/actions/workflows/test.yaml)
-[![webcache](https://img.shields.io/badge/webcache-v1.0.0-orange.svg)](https://github.com/alvidir/webcache)
+[![Go version](https://img.shields.io/badge/Go-go1.18-blue.svg)](https://go.dev/) [![tests](https://github.com/alvidir/webcache/actions/workflows/test.yaml/badge.svg?branch=main)](https://github.com/alvidir/webcache/actions/workflows/test.yaml)
+[![webcache](https://img.shields.io/github/v/release/alvidir/webcache.svg)](https://github.com/alvidir/webcache)
 
 Reverse proxy as an HTTP cache and requests decorator
 
