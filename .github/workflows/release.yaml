@@ -1,19 +1,14 @@
 name: Release version
 
 on:
-  workflow_run:
-    workflows: ["Run tests"]
-    branches: [main]
-    types: 
-      - completed
-
-  workflow_dispatch:
+  push:
+    branches: [ main ]
 
 jobs:
   release_version:
     name: Release version
     runs-on: ubuntu-latest
-    if: contains(github.event.head_commit.message, 'release')
+    if: ${{ contains(github.event.head_commit.message, 'release') }}
     
     steps:
       - name: Checkout code

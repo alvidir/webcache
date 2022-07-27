@@ -4,8 +4,6 @@ on:
   push:
     branches: [ '**' ]
 
-  workflow_dispatch:
-
 jobs:
   run_unitary_tests:
     name: Run unitary tests
@@ -27,3 +25,4 @@ jobs:
         
       - name: Test
         run: go test -v -race ./...
+        
