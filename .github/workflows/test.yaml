@@ -1,8 +1,6 @@
 name: Run tests
 
-on:
-  push:
-    branches: [ '**' ]
+on: [push, pull_request]
 
 jobs:
   run_unitary_tests:
@@ -25,4 +23,3 @@ jobs:
         
       - name: Test
         run: go test -v -race ./...
-        
