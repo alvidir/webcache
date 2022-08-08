@@ -6,7 +6,7 @@ require (
 	github.com/go-redis/cache/v8 v8.4.1
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/joho/godotenv v1.4.0
-	go.uber.org/zap v1.11.0
+	go.uber.org/zap v1.22.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 
