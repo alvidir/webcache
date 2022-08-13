@@ -30,8 +30,8 @@ var (
 	serviceAddr = "0.0.0.0:8000"
 	serviceNetw = "tcp"
 	configPath  = "/etc/webcache/"
-	cache_ttl   = 10 * time.Minute
-	cache_size  = 1024
+	cacheTTL    = 10 * time.Minute
+	cacheSize   = 1024
 )
 
 func setupConfiguration(logger *zap.Logger) *wcache.ConfigGroup {
@@ -61,7 +61,7 @@ func setupCache(logger *zap.Logger) *wcache.RedisCache {
 				zap.String("value", value),
 				zap.Error(err))
 		} else {
-			cache_ttl = ttl
+			cacheTTL = ttl
 		}
 	}
 
@@ -71,11 +71,11 @@ func setupCache(logger *zap.Logger) *wcache.RedisCache {
 				zap.String("value", value),
 				zap.Error(err))
 		} else {
-			cache_size = size
+			cacheSize = size
 		}
 	}
 
-	cache, err := wcache.NewRedisCache(addr, cache_size, cache_ttl)
+	cache, err := wcache.NewRedisCache(addr, cacheSize, cacheTTL)
 	if err != nil {
 		log.Fatalf("cache setup has failed: %s", err)
 	}

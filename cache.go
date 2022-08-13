@@ -13,17 +13,6 @@ type RedisCache struct {
 	cache *cache.Cache
 }
 
-// NewCache returns a basic Cache implementation
-func NewCache(size int, ttl time.Duration) (*RedisCache, error) {
-	cache := &RedisCache{
-		cache: cache.New(&cache.Options{
-			LocalCache: cache.NewTinyLFU(size, ttl),
-		}),
-	}
-
-	return cache, nil
-}
-
 // NewRedisCache returns an implementation of Cache for RedisCache
 func NewRedisCache(addr string, size int, ttl time.Duration) (*RedisCache, error) {
 	ring := redis.NewRing(&redis.RingOptions{
